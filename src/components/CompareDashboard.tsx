@@ -163,7 +163,7 @@ export function CompareDashboard({
             <button
               key={t.code}
               onClick={() => setTierFilter(t.code)}
-              className={`rounded-full border px-3 py-1 ${tierFilter === t.code ? "border-accent bg-accent text-white" : "border-line text-ink-2 hover:bg-surface-2"}`}
+              className={`rounded-full border px-3 py-1 ${tierFilter === t.code ? "border-accent bg-accent text-accent-contrast" : "border-line text-ink-2 hover:bg-surface-2"}`}
               aria-pressed={tierFilter === t.code}
             >
               {t.label} <span className="tabular opacity-70">{n}</span>

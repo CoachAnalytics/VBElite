@@ -10,8 +10,13 @@
   --text-primary: #0b0b0b;
   --text-secondary: #52514e;
   --text-muted: #7a7873;
-  --accent: #2a78d6;
-  --accent-ink: #1c5cab;
+  /* Brand: navy + gold from the VB Elite logo */
+  --brand-navy: #0c1c36;
+  --brand-gold: #a6884e;
+  --accent: #0c1c36;
+  --accent-ink: #1c3f78;
+  --accent-contrast: #ffffff;
+  --gold-ink: #7a6130;
   --grid: #e8e6e1;
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -31,8 +36,10 @@
     --text-primary: #ffffff;
     --text-secondary: #c3c2b7;
     --text-muted: #9a998f;
-    --accent: #3987e5;
-    --accent-ink: #86b6ef;
+    --accent: #c4a468;
+    --accent-ink: #d9bf8c;
+    --accent-contrast: #0c1c36;
+    --gold-ink: #d9bf8c;
     --grid: #2f2e2c;
     --series-1: #3987e5;
     --series-2: #d95926;
@@ -52,8 +59,10 @@
   --text-primary: #ffffff;
   --text-secondary: #c3c2b7;
   --text-muted: #9a998f;
-  --accent: #3987e5;
-  --accent-ink: #86b6ef;
+  --accent: #c4a468;
+  --accent-ink: #d9bf8c;
+  --accent-contrast: #0c1c36;
+  --gold-ink: #d9bf8c;
   --grid: #2f2e2c;
   --series-1: #3987e5;
   --series-2: #d95926;
@@ -73,6 +82,9 @@
   --color-ink-3: var(--text-muted);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-gold: var(--brand-gold);
+  --color-gold-ink: var(--gold-ink);
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
@@ -99,7 +111,7 @@ body {
 }
 
 @utility btn-primary {
-  @apply btn bg-accent text-white hover:opacity-90;
+  @apply btn bg-accent text-accent-contrast hover:opacity-90;
 }
 
 @utility btn-secondary {
@@ -112,4 +124,26 @@ body {
 
 @utility label {
   @apply mb-1 block text-sm font-medium text-ink-2;
+}
+
+/* Logo artwork: navy wordmark on light surfaces, white wordmark on dark. */
+.logo-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-light {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .logo-dark {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .logo-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .logo-dark {
+  display: block;
 }

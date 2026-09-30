@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 
 const FEATURES = [
   {
@@ -26,6 +27,7 @@ export default async function Home() {
   return (
     <div className="space-y-12">
       <section className="max-w-2xl space-y-4 pt-6">
+        <Logo height={96} priority />
         <h1 className="text-4xl font-semibold tracking-tight">
           Find the college volleyball programs where your recruit fits.
         </h1>
@@ -40,7 +42,7 @@ export default async function Home() {
       </section>
       <section className="grid gap-4 sm:grid-cols-2">
         {FEATURES.map((f) => (
-          <div key={f.title} className="card p-5">
+          <div key={f.title} className="card border-t-2 border-t-gold p-5">
             <h2 className="font-medium">{f.title}</h2>
             <p className="mt-1 text-sm text-ink-2">{f.body}</p>
           </div>

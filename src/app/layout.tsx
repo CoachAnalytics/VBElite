@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { logout } from "./actions";
 import { getCurrentUser } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,10 +26,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <header className="border-b border-line">
-          <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-sm">
-            <Link href="/" className="text-base font-semibold tracking-tight">
-              VB Elite
+        <header className="border-b-2 border-gold">
+          <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm sm:gap-x-6">
+            <Link href="/" aria-label="VB Elite home" className="-my-1 shrink-0">
+              <Logo height={36} priority />
             </Link>
             {user ? (
               <>
