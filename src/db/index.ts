@@ -5,6 +5,7 @@ import postgres from "postgres";
 import fs from "node:fs";
 import path from "node:path";
 import * as schema from "./schema";
+import { databaseUrl, MISSING_URL_ON_VERCEL } from "./url";
 
 type DB = ReturnType<typeof drizzlePostgres<typeof schema>>;
 
@@ -44,10 +45,12 @@ function lockPglite(dir: string) {
 // Without it we use an embedded Postgres (PGlite) stored in ./.data so the
 // app runs locally with zero setup.
 function createDb(): DB {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (url) {
-    return drizzlePostgres(postgres(url, { prepare: false }), { schema });
+    // prepare: false keeps it compatible with transaction-mode poolers (Supabase, Neon).
+    return drizzlePostgres(postgres(url, { prepare: false, max: 5, idle_timeout: 20 }), { schema });
   }
+  if (process.env.VERCEL) throw new Error(MISSING_URL_ON_VERCEL);
   const dir = process.env.PGLITE_DIR ?? ".data/pglite";
   fs.mkdirSync(dir, { recursive: true });
   lockPglite(dir);

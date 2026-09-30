@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { logout } from "./actions";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import "./globals.css";
 
@@ -36,6 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/compare" className="text-ink-2 hover:text-ink">Compare</Link>
                 <Link href="/schools" className="text-ink-2 hover:text-ink">Schools</Link>
                 <Link href="/profile" className="text-ink-2 hover:text-ink">Athlete profile</Link>
+                {isAdmin(user) && <Link href="/admin" className="text-ink-2 hover:text-ink">Admin</Link>}
                 <form action={logout} className="ml-auto">
                   <button className="text-ink-3 hover:text-ink">Log out</button>
                 </form>

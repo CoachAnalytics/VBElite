@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 
@@ -47,4 +47,20 @@ export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   return user;
+}
+
+/** Admins are listed by email in the ADMIN_EMAILS environment variable (comma-separated). */
+export function isAdmin(user: { email: string } | null): boolean {
+  if (!user) return false;
+  const admins = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return admins.includes(user.email.toLowerCase());
+}
+
+export async function requireAdmin() {
+  const user = await getCurrentUser();
+  if (!isAdmin(user)) notFound();
+  return user!;
 }

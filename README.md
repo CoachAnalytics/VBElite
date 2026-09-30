@@ -31,7 +31,8 @@ so nothing else needs to be installed. Only one process can open it at a time:
 
 ## Updating school data
 
-Until automated collectors exist, the research spreadsheet is the source of truth:
+Until automated collectors exist, the research spreadsheet is the source of truth.
+On the live site, upload it on the **Admin** page (visible to `ADMIN_EMAILS`). Locally:
 
 1. Edit the workbook (same tabs and column headers as the original).
 2. `npm run import:xlsx -- workbook.xlsx` rewrites `data/seed/schools.json`. Options:
@@ -48,11 +49,24 @@ The database schema covers every division (D1, D2, D3, NAIA, JUCO) and every pos
 first workbook only covers outside hitters, so athletes at other positions see "No data yet"
 instead of misleading zeros.
 
-## Deploying
+## Deploying (Vercel + Neon Postgres)
 
-1. Create a Postgres database (Supabase or Neon free tiers both work) and copy its connection string.
-2. `DATABASE_URL=... npm run db:migrate && DATABASE_URL=... npm run db:seed`
-3. Deploy to Vercel (import the GitHub repo) and set `DATABASE_URL` in the project's environment variables.
+1. **Vercel:** sign up at vercel.com with your GitHub account, click **Add New → Project**, and import
+   `CoachAnalytics/VBElite`. Leave the defaults and don't deploy yet if it asks; the first deploy fails without a database.
+2. **Database:** in the project, open **Storage → Create Database → Neon (Serverless Postgres)**, create it
+   (free plan is fine; pick the US East region, the same as Vercel's default), and connect it to the project for all
+   environments. This adds `DATABASE_URL` automatically.
+3. **Admin access:** under **Settings → Environment Variables**, add `ADMIN_EMAILS` = the email you'll sign up with.
+4. **Deploy:** open **Deployments** and redeploy. Every deploy runs `vercel-build`, which applies any
+   pending database migrations and then builds the app.
+5. **Load the data:** open the site, sign up with the admin email, go to **Admin**, and upload the workbook.
+   Re-upload any time the spreadsheet changes.
+
+A custom domain can be added under **Settings → Domains**.
+
+Notes:
+- The demo account is never created against a remote database.
+- Vercel's free Hobby plan is for non-commercial use. Switch to Pro before charging subscribers.
 
 ## Project layout
 
@@ -62,7 +76,9 @@ instead of misleading zeros.
 | `src/db/schema.ts` | Database tables. After changing it, run `npm run db:generate` to create a migration |
 | `src/app/` | Pages: `/schools` (browse and add), `/compare` (dashboard), `/schools/[slug]` (school detail), `/profile` |
 | `src/app/actions.ts` | Server actions: sign up, log in, save profile, add or remove schools |
-| `scripts/` | Spreadsheet import, migrations, seeding |
+| `src/lib/import/` | Workbook parser and database loader (used by the CLI and the admin upload) |
+| `src/app/admin/` | Admin page: data upload and status |
+| `scripts/` | CLI wrappers: spreadsheet import, migrations, seeding |
 
 Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 
