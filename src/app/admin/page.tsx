@@ -3,11 +3,13 @@ import { count, desc, eq, max } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { ImportForm } from "@/components/ImportForm";
+import { AddAdminForm } from "@/components/AddAdminForm";
+import { removeAdmin } from "./actions";
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const me = await requireAdmin();
 
-  const [[users], [athletes], divisions, recent] = await Promise.all([
+  const [[users], [athletes], divisions, recent, admins] = await Promise.all([
     db.select({ n: count() }).from(schema.users),
     db.select({ n: count() }).from(schema.athletes),
     db
@@ -29,6 +31,11 @@ export default async function AdminPage() {
       .groupBy(schema.schools.id)
       .orderBy(desc(schema.schools.updatedAt), schema.schools.name)
       .limit(50),
+    db
+      .select({ id: schema.users.id, email: schema.users.email, createdAt: schema.users.createdAt })
+      .from(schema.users)
+      .where(eq(schema.users.role, "admin"))
+      .orderBy(schema.users.createdAt),
   ]);
   const fmt = (d: Date | null) =>
     d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
@@ -50,6 +57,37 @@ export default async function AdminPage() {
           workbook are left alone.
         </p>
         <ImportForm />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Admins</h2>
+        <p className="max-w-2xl text-sm text-ink-2">
+          Admins can upload school data and add or remove other admins.
+        </p>
+        <div className="card divide-y divide-line">
+          {admins.map((a) => (
+            <div key={a.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+              <span>
+                {a.email}
+                {a.id === me.id && <span className="ml-2 text-xs text-ink-3">(you)</span>}
+              </span>
+              {a.id !== me.id && (
+                <form action={removeAdmin}>
+                  <input type="hidden" name="userId" value={a.id} />
+                  <button className="text-xs text-ink-3 hover:text-bad" aria-label={`Remove admin access for ${a.email}`}>
+                    Remove admin
+                  </button>
+                </form>
+              )}
+            </div>
+          ))}
+          {admins.length === 0 && (
+            <p className="px-4 py-2.5 text-sm text-ink-3">You&apos;re an admin through the ADMIN_EMAILS setting.</p>
+          )}
+          <div className="px-4 py-4">
+            <AddAdminForm />
+          </div>
+        </div>
       </section>
 
       <section className="space-y-3">

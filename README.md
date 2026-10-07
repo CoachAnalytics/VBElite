@@ -69,11 +69,15 @@ instead of misleading zeros.
 2. **Database:** in the project, open **Storage → Create Database → Neon (Serverless Postgres)**, create it
    (free plan is fine; pick the US East region, the same as Vercel's default), and connect it to the project for all
    environments. This adds `DATABASE_URL` automatically.
-3. **Admin access:** under **Settings → Environment Variables**, add `ADMIN_EMAILS` = the email you'll sign up with.
-4. **Deploy:** open **Deployments** and redeploy. Every deploy runs `vercel-build`, which applies any
+3. **Deploy:** open **Deployments** and redeploy. Every deploy runs `vercel-build`, which applies any
    pending database migrations and then builds the app.
-5. **Load the data:** open the site, sign up with the admin email, go to **Admin**, and upload the workbook.
-   Re-upload any time the spreadsheet changes.
+4. **Become the admin:** open the site and sign up right away. **The first account on a new site becomes
+   its admin.** Do this before sharing the address.
+5. **Load the data:** go to **Admin** and upload the workbook. Re-upload any time the spreadsheet changes.
+
+More admins are added on the **Admin** page, either by promoting an existing account or by creating a login
+with a starting password, which they can change on their Profile page. As a way back in if every admin
+login is lost, emails listed in an optional `ADMIN_EMAILS` environment variable are always admins.
 
 A custom domain can be added under **Settings → Domains**.
 
@@ -90,7 +94,7 @@ Notes:
 | `src/app/` | Pages: `/schools` (browse and add), `/compare` (dashboard), `/schools/[slug]` (school detail), `/profile` |
 | `src/app/actions.ts` | Server actions: sign up, log in, save profile, add or remove schools |
 | `src/lib/import/` | Workbook parser and database loader (used by the CLI and the admin upload) |
-| `src/app/admin/` | Admin page: data upload and status |
+| `src/app/admin/` | Admin page: data upload, data status, admin accounts |
 | `scripts/` | CLI wrappers: spreadsheet import, migrations, seeding |
 
 Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.

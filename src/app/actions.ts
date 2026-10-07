@@ -26,7 +26,10 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const { email, password } = parsed.data;
   const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email));
   if (existing) return { error: "An account with that email already exists. Log in instead." };
-  const [user] = await db.insert(schema.users).values({ email, passwordHash: hashPassword(password) }).returning();
+  // The first account on a new site becomes its admin, so the owner needs no setup step.
+  const [anyAdmin] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, "admin")).limit(1);
+  const role = anyAdmin ? "user" : "admin";
+  const [user] = await db.insert(schema.users).values({ email, passwordHash: hashPassword(password), role }).returning();
   await createSession(user.id);
   redirect("/profile");
 }
@@ -39,6 +42,29 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   if (!user || !verifyPassword(password, user.passwordHash)) return { error: "Incorrect email or password." };
   await createSession(user.id);
   redirect("/compare");
+}
+
+const passwordChange = z
+  .object({
+    current: z.string().min(1, "Enter your current password"),
+    next: z.string().min(8, "New password must be at least 8 characters"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.next === d.confirm, { message: "The new passwords don't match" });
+
+export async function changePassword(_: FormState, form: FormData): Promise<FormState> {
+  const me = await requireUser();
+  const parsed = passwordChange.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, me.id));
+  if (!user || !verifyPassword(parsed.data.current, user.passwordHash)) {
+    return { error: "Your current password is incorrect." };
+  }
+  await db.update(schema.users).set({ passwordHash: hashPassword(parsed.data.next) }).where(eq(schema.users.id, me.id));
+  // Sign out every other device that knew the old password.
+  await db.delete(schema.sessions).where(eq(schema.sessions.userId, me.id));
+  await createSession(me.id);
+  return { ok: true };
 }
 
 export async function logout() {

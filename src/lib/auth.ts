@@ -35,12 +35,17 @@ export const getCurrentUser = cache(async () => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const [row] = await db
-    .select({ id: schema.users.id, email: schema.users.email, expiresAt: schema.sessions.expiresAt })
+    .select({
+      id: schema.users.id,
+      email: schema.users.email,
+      role: schema.users.role,
+      expiresAt: schema.sessions.expiresAt,
+    })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.users.id, schema.sessions.userId))
     .where(eq(schema.sessions.id, hashToken(token)));
   if (!row || row.expiresAt < new Date()) return null;
-  return { id: row.id, email: row.email };
+  return { id: row.id, email: row.email, role: row.role };
 });
 
 export async function requireUser() {
@@ -49,14 +54,19 @@ export async function requireUser() {
   return user;
 }
 
-/** Admins are listed by email in the ADMIN_EMAILS environment variable (comma-separated). */
-export function isAdmin(user: { email: string } | null): boolean {
+/**
+ * Admins have role "admin" (granted on the Admin page, or automatically to the first
+ * account on a new site). Emails in the optional ADMIN_EMAILS environment variable
+ * are always admins too, as a way back in if every admin login is lost.
+ */
+export function isAdmin(user: { email: string; role?: string } | null): boolean {
   if (!user) return false;
-  const admins = (process.env.ADMIN_EMAILS ?? "")
+  if (user.role === "admin") return true;
+  const fromEnv = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-  return admins.includes(user.email.toLowerCase());
+  return fromEnv.includes(user.email.toLowerCase());
 }
 
 export async function requireAdmin() {

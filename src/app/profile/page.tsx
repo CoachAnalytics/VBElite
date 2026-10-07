@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { getAthlete } from "@/lib/queries";
 import { AthleteForm } from "@/components/AthleteForm";
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -14,6 +15,8 @@ export default async function ProfilePage() {
         </p>
       </div>
       <AthleteForm athlete={athlete} />
+      <p className="text-sm text-ink-3">Signed in as {user.email}</p>
+      <ChangePasswordForm />
     </div>
   );
 }
