@@ -12,6 +12,19 @@ interested in, and get a side-by-side comparison:
 - **Fit score**: a 0–100 ranking of the schools on the list, weighted by what the family
   cares about (sliders on the Compare page).
 
+## Home-screen app
+
+The site is installable as an app (a PWA):
+
+- **iPhone/iPad:** open the site in Safari, tap **Share → Add to Home Screen**.
+- **Android:** Chrome offers **Install app** (VB Elite also shows its own Install button on phones).
+
+It then opens full screen with the VB Elite icon and a bottom tab bar. Pieces:
+`src/app/manifest.ts` (name, colors, icons in `public/icons/`), `src/app/apple-icon.png`,
+`public/sw.js` (service worker: offline fallback page only; personal pages are never cached),
+`src/components/pwa.tsx` (registration plus the install hint), and `src/components/BottomNav.tsx`.
+Installing requires HTTPS, which Vercel provides. The service worker only registers in production builds.
+
 ## Run it locally
 
 Requires Node 20+.
@@ -90,3 +103,5 @@ Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 - [ ] Scheduled collectors: records and postseason results (NCAA stats), rosters (school athletics sites), APR
 - [ ] All positions for rosters and commits, plus an admin review queue for scraped changes
 - [ ] Email alerts when a school on your list gets a new commit at your position or changes coach
+- [x] Installable home-screen app (PWA)
+- [ ] App Store / Google Play apps: wrap this site with Capacitor and add native features (push alerts, offline lists) so it qualifies as more than a website
