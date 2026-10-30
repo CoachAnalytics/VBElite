@@ -31,6 +31,15 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
   const program = programSummary(bundle.seasons);
   const saved = athlete ? (await getSavedSchools(athlete.id)).some((s) => s.schoolId === school.id) : false;
   const pos = athlete?.position;
+  // Only http(s) links from the research sources are shown.
+  const sources: string[] = (() => {
+    try {
+      const list = JSON.parse(school.sources ?? "[]");
+      return Array.isArray(list) ? list.filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u)) : [];
+    } catch {
+      return [];
+    }
+  })();
   const covered = pos ? school.positionsCovered.split(",").includes(pos) : false;
   const roster = pos
     ? bundle.roster
@@ -62,14 +71,18 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <Stat label={`Win % (${program.seasonsTracked} seasons)`} value={formatPct(program.winPct)} sub={`${program.wins}–${program.losses}`} />
+        <Stat
+          label={`Win % (${program.recordSeasons} seasons)`}
+          value={formatPct(program.winPct)}
+          sub={program.recordSeasons ? `${program.wins}–${program.losses}` : "records not collected yet"}
+        />
         <Stat label="Postseason trips" value={`${program.postseasonApps}/${program.seasonsTracked}`} sub={program.bestFinish ? `Best: ${program.bestFinish}` : undefined} />
         <Stat
           label="Head coach"
           value={<span className="text-base">{school.headCoach ?? "—"}</span>}
           sub={school.coachSince ? `Since ${school.coachSince}${a?.coachTenure != null && a.coachTenure <= 2 ? " · new" : ""}` : undefined}
         />
-        <Stat label="APR" value={school.apr ?? "—"} sub={school.aprNote ?? undefined} />
+        <Stat label="Volleyball APR" value={school.apr ?? "—"} sub={school.apr != null ? school.aprNote ?? undefined : "not published"} />
         <Stat
           label="Tuition & fees"
           value={formatMoney(a?.cost.tuition ?? school.tuitionOutState ?? school.tuitionInState)}
@@ -115,6 +128,27 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
         </section>
       )}
 
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Academics &amp; cost</h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          <Stat label="Undergraduates" value={school.enrollment?.toLocaleString() ?? "—"} sub={school.control ?? undefined} />
+          <Stat label="Admission rate" value={formatPct(school.admissionRate)} />
+          <Stat
+            label="Average SAT / ACT"
+            value={school.satAvg ?? "—"}
+            sub={school.act25 != null ? `ACT ${school.act25}–${school.act75}` : undefined}
+          />
+          <Stat label="Graduation rate" value={formatPct(school.graduationRate)} sub="6-year, all students" />
+          <Stat label="Average net price" value={formatMoney(school.avgNetPrice)} sub="per year after aid, all students" />
+          <Stat label="Median earnings" value={formatMoney(school.medianEarnings)} sub="10 years after entry" />
+        </div>
+        <p className="text-xs text-ink-3">
+          Tuition: {formatMoney(school.tuitionInState)} in-state, {formatMoney(school.tuitionOutState)} out-of-state
+          {school.costOfAttendance ? ` · Full cost of attendance ${formatMoney(school.costOfAttendance)}` : ""}. Source: U.S.
+          Department of Education College Scorecard (latest published year). Athletic scholarships aren&apos;t included.
+        </p>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="font-medium">Win % by season</h2>
@@ -126,15 +160,18 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
               <tr>
                 <th className="px-4 py-2 font-medium">Season</th>
                 <th className="px-4 py-2 text-right font-medium">Record</th>
-                <th className="px-4 py-2 font-medium">Postseason</th>
+                <th className="px-4 py-2 font-medium">NCAA tournament</th>
               </tr>
             </thead>
             <tbody>
               {[...program.seasons].reverse().map((s) => (
                 <tr key={s.year} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">{s.year}</td>
-                  <td className="tabular px-4 py-2 text-right">{s.wins}–{s.losses}</td>
-                  <td className="px-4 py-2 text-ink-2">{s.postseason ?? "—"}</td>
+                  <td className="tabular px-4 py-2 text-right">{s.wins != null ? `${s.wins}–${s.losses}` : "—"}</td>
+                  <td className="px-4 py-2 text-ink-2">
+                    {s.postseason === "DNQ" ? "Did not qualify" : (s.postseason ?? "—")}
+                    {s.ncaaSeed != null && <span className="text-ink-3"> · {s.ncaaSeed} seed</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -198,15 +235,27 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
         </section>
       )}
 
-      {(school.programNote || school.enrollmentNote) && (
-        <section className="text-sm text-ink-2">
-          {school.programNote && <p>{school.programNote}</p>}
-          <p className="mt-1 text-xs text-ink-3">
-            Last updated {school.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            {school.enrollmentNote && ` · Enrollment: ${school.enrollmentNote}`}
-          </p>
-        </section>
-      )}
+      <section className="space-y-1 text-sm text-ink-2">
+        {school.programNote && <p>{school.programNote}</p>}
+        <p className="text-xs text-ink-3">
+          {school.researchedAt
+            ? `Roster, commits and coach researched ${school.researchedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+            : "Roster and commit research for this school is still in progress."}{" "}
+          NCAA tournament results: Wikipedia tournament records. Academics and cost: College Scorecard.
+        </p>
+        {sources.length > 0 && (
+          <details className="text-xs text-ink-3">
+            <summary className="cursor-pointer">Sources ({sources.length})</summary>
+            <ul className="mt-1 space-y-0.5">
+              {sources.map((u) => (
+                <li key={u} className="truncate">
+                  <a href={u} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">{u}</a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
     </div>
   );
 }

@@ -16,6 +16,13 @@ export const schools = pgTable("schools", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  // Identifiers in the NCAA member directory and the College Scorecard
+  ncaaOrgId: integer("ncaa_org_id").unique(),
+  scorecardUnitId: integer("scorecard_unit_id"),
+  officialName: text("official_name"),
+  team: text("team"),
+  website: text("website"),
+  athleticsWebsite: text("athletics_website"),
   city: text("city"),
   state: text("state"),
   latitude: real("latitude"),
@@ -30,6 +37,17 @@ export const schools = pgTable("schools", {
   tuitionInState: integer("tuition_in_state"),
   tuitionOutState: integer("tuition_out_state"),
   tuitionYear: text("tuition_year"),
+  // Academics and cost (College Scorecard)
+  admissionRate: real("admission_rate"),
+  satAvg: integer("sat_avg"),
+  act25: integer("act_25"),
+  act75: integer("act_75"),
+  costOfAttendance: integer("cost_of_attendance"),
+  avgNetPrice: integer("avg_net_price"),
+  graduationRate: real("graduation_rate"),
+  retentionRate: real("retention_rate"),
+  medianEarnings: integer("median_earnings"),
+  studentFacultyRatio: integer("student_faculty_ratio"),
   headCoach: text("head_coach"),
   coachSince: integer("coach_since"),
   apr: integer("apr"),
@@ -43,6 +61,9 @@ export const schools = pgTable("schools", {
   commitDataQuality: text("commit_data_quality"),
   recruitingNote: text("recruiting_note"),
   programNote: text("program_note"),
+  // When the roster/commit/coach research was last done, and the URLs it used (JSON array)
+  researchedAt: timestamp("researched_at", { withTimezone: true }),
+  sources: text("sources"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -54,10 +75,12 @@ export const seasons = pgTable(
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
     year: integer("year").notNull(),
-    wins: integer("wins").notNull(),
-    losses: integer("losses").notNull(),
+    // Null when the season record hasn't been collected yet
+    wins: integer("wins"),
+    losses: integer("losses"),
     // Postseason finish, e.g. "DNQ", "1st round", "Sweet 16", "Champion"
     postseason: text("postseason"),
+    ncaaSeed: integer("ncaa_seed"),
   },
   (t) => [uniqueIndex("seasons_school_year").on(t.schoolId, t.year)],
 );
@@ -90,9 +113,11 @@ export const commits = pgTable("commits", {
   positions: text("positions").notNull(),
   primaryPosition: text("primary_position").notNull(),
   heightIn: integer("height_in"),
+  highSchool: text("high_school"),
   hometown: text("hometown"),
   club: text("club"),
   note: text("note"),
+  source: text("source"),
 });
 
 // ---------- Accounts ----------

@@ -15,6 +15,13 @@
       "when": 1791401291441,
       "tag": "0001_user_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793374295345,
+      "tag": "0002_d1_directory",
+      "breakpoints": true
     }
   ]
 }

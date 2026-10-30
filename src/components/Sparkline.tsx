@@ -1,5 +1,7 @@
 /** Tiny win-% trend on a fixed 0–100% scale so rows are comparable. */
-export function Sparkline({ values, label }: { values: number[]; label: string }) {
+export function Sparkline({ values: raw, label }: { values: (number | null)[]; label: string }) {
+  // Seasons without a collected record are skipped.
+  const values = raw.filter((v): v is number => v != null);
   if (values.length < 2) return null;
   const w = 64;
   const h = 20;

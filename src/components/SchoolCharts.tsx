@@ -5,7 +5,7 @@ import { ChartLegend } from "./ChartLegend";
 
 const tooltipBox = "rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sm";
 
-type SeasonDatum = { year: number; winPct: number; wins: number; losses: number; postseason: string | null };
+type SeasonDatum = { year: number; winPct: number | null; wins: number | null; losses: number | null; postseason: string | null };
 
 export function WinPctChart({ data }: { data: SeasonDatum[] }) {
   return (
@@ -30,7 +30,7 @@ export function WinPctChart({ data }: { data: SeasonDatum[] }) {
                 <div className={tooltipBox}>
                   <div className="font-medium text-ink">{d.year}</div>
                   <div className="text-ink-2">
-                    {d.wins}–{d.losses} ({Math.round(d.winPct * 100)}%)
+                    {d.winPct == null ? "Record not collected yet" : `${d.wins}–${d.losses} (${Math.round(d.winPct * 100)}%)`}
                   </div>
                   <div className="text-ink-2">Postseason: {d.postseason ?? "—"}</div>
                 </div>
@@ -41,7 +41,7 @@ export function WinPctChart({ data }: { data: SeasonDatum[] }) {
             <LabelList
               dataKey="winPct"
               position="top"
-              formatter={(v) => `${Math.round(Number(v) * 100)}%`}
+              formatter={(v) => (v == null ? "" : `${Math.round(Number(v) * 100)}%`)}
               fill="var(--text-secondary)"
             />
           </Bar>

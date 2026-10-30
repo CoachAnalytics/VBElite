@@ -19,6 +19,24 @@ const school = (over: Partial<School> = {}): School => ({
   id: 1,
   slug: "test-u",
   name: "Test U",
+  ncaaOrgId: null,
+  scorecardUnitId: null,
+  officialName: null,
+  team: null,
+  website: null,
+  athleticsWebsite: null,
+  admissionRate: null,
+  satAvg: null,
+  act25: null,
+  act75: null,
+  costOfAttendance: null,
+  avgNetPrice: null,
+  graduationRate: 0.8,
+  retentionRate: null,
+  medianEarnings: null,
+  studentFacultyRatio: null,
+  researchedAt: null,
+  sources: null,
   city: "Columbus",
   state: "OH",
   latitude: 39.96,
@@ -67,9 +85,11 @@ const commit = (gradYear: number, positions = "OH", heightIn = 73): Commit => ({
   positions,
   primaryPosition: positions.split("/")[0],
   heightIn,
+  highSchool: null,
   hometown: null,
   club: null,
   note: null,
+  source: null,
 });
 const season = (year: number, wins: number, losses: number, postseason: string | null): Season => ({
   id: nextId++,
@@ -78,6 +98,7 @@ const season = (year: number, wins: number, losses: number, postseason: string |
   wins,
   losses,
   postseason,
+  ncaaSeed: null,
 });
 
 const athlete: AthleteInput = {
@@ -123,6 +144,17 @@ describe("programSummary", () => {
     expect(p.bestFinish).toBe("Sweet 16 (2024)");
     expect(p.seasons.map((s) => s.year)).toEqual([2023, 2024, 2025]);
     expect(p.lastSeasonWinPct).toBe(1);
+  });
+
+  it("keeps postseason history for seasons without a record", () => {
+    const p = programSummary([
+      { ...season(2024, 0, 0, "Elite 8"), wins: null, losses: null },
+      season(2025, 20, 10, "DNQ"),
+    ]);
+    expect(p.recordSeasons).toBe(1);
+    expect(p.winPct).toBeCloseTo(2 / 3);
+    expect(p.postseasonApps).toBe(1);
+    expect(p.seasons[0].winPct).toBeNull();
   });
 });
 
@@ -199,7 +231,7 @@ describe("scoreSchools", () => {
   );
   const b = analyzeSchool(
     {
-      school: school({ id: 2, tuitionInState: 50000, tuitionOutState: 50000, latitude: 34, longitude: -118, apr: null }),
+      school: school({ id: 2, tuitionInState: 50000, tuitionOutState: 50000, latitude: 34, longitude: -118, graduationRate: null }),
       seasons: [season(2025, 0, 30, "DNQ")],
       roster: [player("Fr"), player("So")],
       commits: [],

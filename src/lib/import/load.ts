@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SchoolSeed } from "@/db/seed-types";
 import { lookupCity } from "@/lib/geo";
@@ -44,6 +44,24 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
     const values = {
       slug: s.slug,
       name: s.name,
+      ncaaOrgId: s.ncaaOrgId ?? null,
+      scorecardUnitId: s.scorecardUnitId ?? null,
+      officialName: s.officialName ?? null,
+      team: s.team ?? null,
+      website: s.website ?? null,
+      athleticsWebsite: s.athleticsWebsite ?? null,
+      admissionRate: s.admissionRate ?? null,
+      satAvg: s.satAvg ?? null,
+      act25: s.act25 ?? null,
+      act75: s.act75 ?? null,
+      costOfAttendance: s.costOfAttendance ?? null,
+      avgNetPrice: s.avgNetPrice ?? null,
+      graduationRate: s.graduationRate ?? null,
+      retentionRate: s.retentionRate ?? null,
+      medianEarnings: s.medianEarnings ?? null,
+      studentFacultyRatio: s.studentFacultyRatio ?? null,
+      researchedAt: s.researchedAt ? new Date(s.researchedAt) : null,
+      sources: s.sources?.length ? JSON.stringify(s.sources) : null,
       city: s.city,
       state: s.state,
       latitude,
@@ -71,19 +89,31 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
     const fallback = s.positionsCovered[0] ?? "OH";
 
     await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(schema.schools)
-        .values(values)
-        .onConflictDoUpdate({ target: schema.schools.slug, set: values })
-        .returning({ id: schema.schools.id });
-      const schoolId = row.id;
+      // Match an existing school by NCAA id (stable) or slug (older spreadsheet imports).
+      const [existing] = await tx
+        .select({ id: schema.schools.id })
+        .from(schema.schools)
+        .where(
+          values.ncaaOrgId != null
+            ? or(eq(schema.schools.ncaaOrgId, values.ncaaOrgId), eq(schema.schools.slug, values.slug))
+            : eq(schema.schools.slug, values.slug),
+        )
+        .limit(1);
+      let schoolId: number;
+      if (existing) {
+        await tx.update(schema.schools).set(values).where(eq(schema.schools.id, existing.id));
+        schoolId = existing.id;
+      } else {
+        const [row] = await tx.insert(schema.schools).values(values).returning({ id: schema.schools.id });
+        schoolId = row.id;
+      }
 
       await tx.delete(schema.seasons).where(eq(schema.seasons.schoolId, schoolId));
       await tx.delete(schema.rosterPlayers).where(eq(schema.rosterPlayers.schoolId, schoolId));
       await tx.delete(schema.commits).where(eq(schema.commits.schoolId, schoolId));
 
       if (s.seasons.length) {
-        await tx.insert(schema.seasons).values(s.seasons.map((x) => ({ ...x, schoolId })));
+        await tx.insert(schema.seasons).values(s.seasons.map((x) => ({ ...x, ncaaSeed: x.ncaaSeed ?? null, schoolId })));
       }
       if (s.roster.length) {
         await tx.insert(schema.rosterPlayers).values(

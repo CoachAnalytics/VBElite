@@ -18,7 +18,7 @@ import { CompetitionChart } from "./CompetitionChart";
 import { Sparkline } from "./Sparkline";
 
 type Row = SchoolAnalysis & { tier: string };
-type SortKey = "score" | "name" | "winPct" | "competition" | "cost" | "distance" | "coach" | "apr";
+type SortKey = "score" | "name" | "winPct" | "competition" | "cost" | "distance" | "coach" | "grad";
 
 // Weights are a per-browser convenience kept in localStorage; if storage is
 // unavailable they live in memory for the visit and the page still works.
@@ -92,7 +92,7 @@ export function CompareDashboard({
         case "cost": return a.cost.tuition;
         case "distance": return a.distanceMiles;
         case "coach": return a.coachTenure;
-        case "apr": return a.apr;
+        case "grad": return a.graduationRate;
       }
     };
     return [...visible].sort((a, b) => {
@@ -186,7 +186,7 @@ export function CompareDashboard({
               {header("cost", "Tuition & fees")}
               {header("distance", "Miles")}
               {header("coach", "Coach yrs")}
-              {header("apr", "APR")}
+              {header("grad", "Grad rate", "right", "Six-year graduation rate, all students (College Scorecard). Volleyball APR shown below when published.")}
               <th className="px-3 py-2"><span className="sr-only">List</span></th>
             </tr>
           </thead>
@@ -259,7 +259,12 @@ export function CompareDashboard({
                     {a.coachTenure ?? "—"}
                     {a.coachTenure != null && a.coachTenure <= 2 && <div className="text-xs text-warn">new coach</div>}
                   </td>
-                  <td className="tabular px-3 py-2.5 text-right" title={a.aprNote ?? undefined}>{a.apr ?? "—"}</td>
+                  <td className="tabular px-3 py-2.5 text-right">
+                    {formatPct(a.graduationRate)}
+                    {a.apr != null && (
+                      <div className="text-xs text-ink-3" title={a.aprNote ?? undefined}>APR {a.apr}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-right">
                     <form action={toggleSchool}>
                       <input type="hidden" name="schoolId" value={a.id} />
@@ -295,7 +300,7 @@ export function CompareDashboard({
           <li><b>{position}s when you arrive</b> counts primary-position players only: current players with eligibility left in fall {gradYear} (freshmen have 3 more seasons, sophomores 2, juniors 1), plus verbal commits in classes {gradYear - 3}–{gradYear}. Redshirts, transfers and future commits aren&apos;t predicted.</li>
           <li><b>Tuition</b> is published tuition & fees before aid or scholarships. In-state rates apply when the school is in your home state.</li>
           <li><b>Miles</b> is straight-line distance from your ZIP code; driving distance is usually 15–25% more.</li>
-          <li><b>APR</b> is the NCAA Academic Progress Rate (D1 only; 1000 is perfect).</li>
+          <li><b>Grad rate</b> is the six-year graduation rate for all students (U.S. Dept. of Education College Scorecard). <b>APR</b> is the volleyball team&apos;s NCAA Academic Progress Rate (1000 is perfect), shown where a school has published it.</li>
         </ul>
       </details>
     </div>

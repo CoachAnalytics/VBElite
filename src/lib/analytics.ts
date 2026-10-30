@@ -41,11 +41,23 @@ export function postseasonRank(result: string | null): number | null {
   return POSTSEASON_RANK[result.trim().toLowerCase()] ?? 1;
 }
 
+export type SeasonRow = {
+  year: number;
+  wins: number | null;
+  losses: number | null;
+  /** Null when the season record hasn't been collected. */
+  winPct: number | null;
+  postseason: string | null;
+  ncaaSeed: number | null;
+};
+
 export type ProgramSummary = {
-  seasons: { year: number; wins: number; losses: number; winPct: number; postseason: string | null }[];
+  seasons: SeasonRow[];
+  /** Totals over the seasons whose record is known. */
   wins: number;
   losses: number;
   winPct: number | null;
+  recordSeasons: number;
   postseasonApps: number;
   seasonsTracked: number;
   bestFinish: string | null;
@@ -54,15 +66,20 @@ export type ProgramSummary = {
 
 export function programSummary(seasons: Season[]): ProgramSummary {
   const sorted = [...seasons].sort((a, b) => a.year - b.year);
-  const rows = sorted.map((s) => ({
-    year: s.year,
-    wins: s.wins,
-    losses: s.losses,
-    winPct: s.wins + s.losses > 0 ? s.wins / (s.wins + s.losses) : 0,
-    postseason: s.postseason,
-  }));
-  const wins = rows.reduce((n, r) => n + r.wins, 0);
-  const losses = rows.reduce((n, r) => n + r.losses, 0);
+  const rows: SeasonRow[] = sorted.map((s) => {
+    const known = s.wins != null && s.losses != null;
+    return {
+      year: s.year,
+      wins: s.wins,
+      losses: s.losses,
+      winPct: known && s.wins! + s.losses! > 0 ? s.wins! / (s.wins! + s.losses!) : null,
+      postseason: s.postseason,
+      ncaaSeed: s.ncaaSeed ?? null,
+    };
+  });
+  const withRecord = rows.filter((r) => r.wins != null && r.losses != null);
+  const wins = withRecord.reduce((n, r) => n + r.wins!, 0);
+  const losses = withRecord.reduce((n, r) => n + r.losses!, 0);
   let best: { label: string; rank: number } | null = null;
   let apps = 0;
   for (const r of rows) {
@@ -76,6 +93,7 @@ export function programSummary(seasons: Season[]): ProgramSummary {
     wins,
     losses,
     winPct: wins + losses > 0 ? wins / (wins + losses) : null,
+    recordSeasons: withRecord.length,
     postseasonApps: apps,
     seasonsTracked: rows.length,
     bestFinish: best?.label ?? null,
@@ -254,6 +272,11 @@ export type SchoolAnalysis = {
   coachTenure: number | null;
   apr: number | null;
   aprNote: string | null;
+  graduationRate: number | null;
+  admissionRate: number | null;
+  satAvg: number | null;
+  avgNetPrice: number | null;
+  medianEarnings: number | null;
   commitDataQuality: string | null;
   recruitingNote: string | null;
   program: ProgramSummary;
@@ -279,6 +302,11 @@ export function analyzeSchool(bundle: SchoolBundle, athlete: AthleteInput, asOf:
     coachTenure: coachTenure(s, asOf),
     apr: s.apr,
     aprNote: s.aprNote,
+    graduationRate: s.graduationRate,
+    admissionRate: s.admissionRate,
+    satAvg: s.satAvg,
+    avgNetPrice: s.avgNetPrice,
+    medianEarnings: s.medianEarnings,
     commitDataQuality: s.commitDataQuality,
     recruitingNote: s.recruitingNote,
     program: programSummary(bundle.seasons),
@@ -294,7 +322,7 @@ export const FACTORS = [
   { key: "cost", label: "Cost", help: "Lower published tuition & fees" },
   { key: "distance", label: "Close to home", help: "Shorter distance from home" },
   { key: "coach", label: "Coaching stability", help: "Longer head-coach tenure (capped at 10 years)" },
-  { key: "academics", label: "Academics (APR)", help: "Higher Academic Progress Rate" },
+  { key: "academics", label: "Academics", help: "Higher graduation rate (all students)" },
   { key: "height", label: "Height fit", help: "Taller relative to players at your position" },
 ] as const;
 
@@ -320,7 +348,7 @@ export function factorValues(a: SchoolAnalysis): Record<FactorKey, number | null
     cost: a.cost.tuition == null ? null : -a.cost.tuition,
     distance: a.distanceMiles == null ? null : -a.distanceMiles,
     coach: a.coachTenure == null ? null : Math.min(a.coachTenure, 10),
-    academics: a.apr,
+    academics: a.graduationRate,
     height: a.position.covered ? a.position.heightDelta : null,
   };
 }

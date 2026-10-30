@@ -3,9 +3,10 @@
 
 export type SeasonSeed = {
   year: number;
-  wins: number;
-  losses: number;
+  wins: number | null;
+  losses: number | null;
   postseason: string | null;
+  ncaaSeed?: number | null;
 };
 
 export type RosterSeed = {
@@ -23,14 +24,34 @@ export type CommitSeed = {
   /** Overrides the first listed position, e.g. an "OH/DS/L" who is really a back-row player. */
   primaryPosition?: string | null;
   heightIn: number | null;
+  highSchool?: string | null;
   hometown: string | null;
   club: string | null;
   note: string | null;
+  source?: string | null;
 };
 
 export type SchoolSeed = {
   slug: string;
   name: string;
+  ncaaOrgId?: number | null;
+  scorecardUnitId?: number | null;
+  officialName?: string | null;
+  team?: string | null;
+  website?: string | null;
+  athleticsWebsite?: string | null;
+  admissionRate?: number | null;
+  satAvg?: number | null;
+  act25?: number | null;
+  act75?: number | null;
+  costOfAttendance?: number | null;
+  avgNetPrice?: number | null;
+  graduationRate?: number | null;
+  retentionRate?: number | null;
+  medianEarnings?: number | null;
+  studentFacultyRatio?: number | null;
+  researchedAt?: string | null;
+  sources?: string[] | null;
   city: string | null;
   state: string | null;
   latitude?: number | null;
