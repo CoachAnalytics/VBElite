@@ -31,8 +31,9 @@ academics and NCAA tournament results (2021–2025), so **don't research those**
 5. **Cite sources.** Give a URL for every block, and for each commit.
 6. Work efficiently: about 15–20 tool calls per school, **at least 6 of them on commits**
    (the hardest and most valuable part). If a source isn't working, move on.
-7. Public documents a search engine links to (for example a media-guide PDF on a public file
-   host) are fine to read, even when the school's main site blocks automated visitors.
+7. Public documents a search engine or another public page links to (for example a
+   media-guide PDF on a public file host) are fine to read, even when the school's main site
+   blocks automated visitors. Don't list storage buckets or guess file addresses.
 
 ## What to collect
 
