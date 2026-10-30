@@ -15,6 +15,8 @@ CLASSES = {"Fr", "So", "Jr", "Sr", "Gr"}
 COMMIT_FIELDS = {"name", "gradYear", "position", "heightIn", "highSchool", "hometown", "club", "source", "note"}
 PLAYER_FIELDS = {"name", "class", "redshirt", "position", "heightIn"}
 URL = re.compile(r"^https?://\S+$")
+# Family details about recruits must never be stored (rule 3 in RESEARCH.md).
+FAMILY = re.compile(r"\b(daughter|son|sister|brother|mother|father|mom|dad|parents?|cousin|niece|aunt|uncle)\s+(of|is|was)\b", re.I)
 
 
 def check(path, tournament):
@@ -70,11 +72,16 @@ def check(path, tournament):
             errors.append(f"commit has disallowed fields {sorted(extra)}")
         if c.get("gradYear") not in (2027, 2028, 2029):
             errors.append(f"commit class {c.get('gradYear')} outside 2027-2029")
+        for field in ("note", "highSchool", "club", "hometown"):
+            if FAMILY.search(str(c.get(field) or "")):
+                errors.append(f"commit {field} mentions family details")
         if not URL.match(str(c.get("source") or "")):
             warnings.append("commit without a source URL")
     if r["commits"].get("completeness") not in ("good", "partial", "none_found"):
         errors.append(f"commits.completeness {r['commits'].get('completeness')!r} invalid")
 
+    if FAMILY.search(str(r.get("notes") or "")):
+        errors.append("notes mention family details")
     if not (r["headCoach"] or {}).get("name"):
         warnings.append("no head coach")
     return errors, warnings
