@@ -53,3 +53,6 @@ next-env.d.ts
 /data/seed/*.json
 
 /data/seed/*.json.gz
+
+# Python bytecode
+__pycache__/
