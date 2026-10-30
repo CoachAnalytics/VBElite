@@ -4,16 +4,16 @@ import type { SchoolSeed } from "@/db/seed-types";
 import { lookupCity } from "@/lib/geo";
 import { isPosition, normalizePositions } from "@/lib/positions";
 
-function positionsOf(raw: string | null, fallback: string, primary?: string | null) {
+function positionsOf(raw: string | null, fallback: string | null, primary?: string | null) {
   const list = normalizePositions(raw);
   if (primary && isPosition(primary)) {
     // Put the curated primary position first, keeping the rest as secondary.
     list.splice(0, list.length, primary, ...list.filter((p) => p !== primary));
   }
-  // Rows collected for a position-specific tab (e.g. "OH Roster") with no listed
-  // position still belong to that position.
-  if (!list.length) list.push(fallback as never);
-  return { positions: list.join("/"), primaryPosition: list[0] };
+  // Rows collected for a single-position tab (e.g. the spreadsheet's "OH Roster") with no
+  // listed position belong to that position. Otherwise an unreadable position stays unknown.
+  if (!list.length && fallback) list.push(fallback as never);
+  return { positions: list.join("/"), primaryPosition: list[0] ?? "?" };
 }
 
 export type LoadSummary = {
@@ -86,7 +86,7 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
       programNote: s.programNote,
       updatedAt: new Date(),
     };
-    const fallback = s.positionsCovered[0] ?? "OH";
+    const fallback = s.positionsCovered.length === 1 ? s.positionsCovered[0] : null;
 
     await db.transaction(async (tx) => {
       // Match an existing school by NCAA id (stable) or slug (older spreadsheet imports).

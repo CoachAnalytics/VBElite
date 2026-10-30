@@ -126,6 +126,7 @@ describe("normalizePositions", () => {
     expect(normalizePositions("Defensive Specialist/ Libero")).toEqual(["LDS"]);
     expect(normalizePositions("Right Side")).toEqual(["OPP"]);
     expect(normalizePositions("Setter")).toEqual(["S"]);
+    expect(normalizePositions("Pin")).toEqual(["OH", "OPP"]);
   });
 });
 

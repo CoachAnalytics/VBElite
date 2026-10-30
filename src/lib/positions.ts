@@ -37,6 +37,7 @@ const PHRASES: [RegExp, string][] = [
   [/defensive\s*specialist/g, "DS"],
   [/libero/g, "L"],
   [/setter/g, "S"],
+  [/\bpin(\s*hitter)?\b/g, "OH OPP"], // pin hitters play either outside or opposite
 ];
 
 /** "OH/DS/L" or "Outside Hitter/Libero" -> ["OH", "LDS"]; unknown tokens are dropped, order kept. */

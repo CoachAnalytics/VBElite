@@ -120,7 +120,10 @@ def build_school(d, sc, tr, r, sh):
                         "heightIn": p.get("heightIn"),
                     }
                 )
-        if rr.get("complete"):
+        # Only project playing time from rosters that are complete AND say who plays where;
+        # otherwise every position would look empty.
+        with_position = sum(1 for p in rr["players"] if p.get("position"))
+        if rr.get("complete") and with_position >= 0.8 * len(rr["players"]):
             covered = ALL_POSITIONS
         if rr.get("source"):
             sources.append(rr["source"])
