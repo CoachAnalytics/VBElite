@@ -47,3 +47,7 @@ next-env.d.ts
 # School data compiled from research spreadsheets. It names recruits (mostly
 # minors), so it stays out of git; regenerate with `npm run import:xlsx`.
 /data/seed/*.json
+
+# Collected source data (re-creatable with collect/*.py); never commit — names recruits
+/data/raw
+/data/seed/*.json
