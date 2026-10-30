@@ -119,6 +119,14 @@ describe("normalizePositions", () => {
     expect(normalizePositions("MH")).toEqual(["MB"]);
     expect(normalizePositions(null)).toEqual([]);
   });
+
+  it("reads spelled-out positions", () => {
+    expect(normalizePositions("Outside Hitter")).toEqual(["OH"]);
+    expect(normalizePositions("Middle Blocker/Opposite Hitter")).toEqual(["MB", "OPP"]);
+    expect(normalizePositions("Defensive Specialist/ Libero")).toEqual(["LDS"]);
+    expect(normalizePositions("Right Side")).toEqual(["OPP"]);
+    expect(normalizePositions("Setter")).toEqual(["S"]);
+  });
 });
 
 describe("parseHeight", () => {

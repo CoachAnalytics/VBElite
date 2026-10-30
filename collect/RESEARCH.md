@@ -29,7 +29,10 @@ academics and NCAA tournament results (2021–2025), so **don't research those**
 4. **Never guess.** Leave a value `null` (or a list empty) when no source confirms it, and
    explain in `notes`. Wrong data is worse than missing data.
 5. **Cite sources.** Give a URL for every block, and for each commit.
-6. Work efficiently: about 10–15 tool calls per school. If a source isn't working, move on.
+6. Work efficiently: about 15–20 tool calls per school, **at least 6 of them on commits**
+   (the hardest and most valuable part). If a source isn't working, move on.
+7. Public documents a search engine links to (for example a media-guide PDF on a public file
+   host) are fine to read, even when the school's main site blocks automated visitors.
 
 ## What to collect
 
@@ -43,6 +46,12 @@ academics and NCAA tournament results (2021–2025), so **don't research those**
   "R-" for redshirts), position as listed, and height.
 - **Commits**: verbal commits and signees in the **classes of 2027 and 2028** (high school
   graduation years) at every position. 2029 recruits can't commit until Aug 1, 2027.
+- **Finding commits** (try several): the school's signing-day / "signing class" releases
+  (November) and "commitment" news; searches like `"committed to <school>" volleyball 2027`,
+  `<school> volleyball 2028 commit`, `<school> volleyball recruiting class 2027`; PrepDig and
+  PrepVolleyball commitment lists; VolleyballMag and local news; club "college commitments"
+  pages. Cross-check: drop anyone later reported as decommitted, and note conflicts.
+- **APR**: one search such as `<school> volleyball APR perfect score` is enough.
 - **commits.completeness**: "good" if a dedicated, current commit list was found; "partial"
   if pieced together from scattered announcements; "none_found" if nothing public was found.
 

@@ -29,11 +29,23 @@ const ALIASES: Record<string, Position> = {
   DS: "LDS",
 };
 
-/** "OH/DS/L" -> ["OH", "LDS"]; unknown tokens are dropped, order kept. */
+// Spelled-out positions as rosters list them ("Outside Hitter", "Right Side").
+const PHRASES: [RegExp, string][] = [
+  [/outside\s*hitter|left\s*side(\s*hitter)?/g, "OH"],
+  [/opposite(\s*(side\s*)?hitter)?|right\s*side(\s*hitter)?/g, "OPP"],
+  [/middle\s*(blocker|hitter)?/g, "MB"],
+  [/defensive\s*specialist/g, "DS"],
+  [/libero/g, "L"],
+  [/setter/g, "S"],
+];
+
+/** "OH/DS/L" or "Outside Hitter/Libero" -> ["OH", "LDS"]; unknown tokens are dropped, order kept. */
 export function normalizePositions(raw: string | null | undefined): Position[] {
   if (!raw) return [];
+  let text = raw.toLowerCase();
+  for (const [re, code] of PHRASES) text = text.replace(re, ` ${code} `);
   const out: Position[] = [];
-  for (const token of raw.toUpperCase().split(/[\/,\s-]+/)) {
+  for (const token of text.toUpperCase().split(/[\/,&\s-]+/)) {
     const code = ALIASES[token.trim()];
     if (code && !out.includes(code)) out.push(code);
   }
