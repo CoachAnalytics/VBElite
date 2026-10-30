@@ -7,7 +7,7 @@ Sources (all in data/raw/):
   research/*.json  coach, APR, records, roster, commits (with sources)   research agents, see RESEARCH.md
   spreadsheet.json the original hand-researched workbook (optional)      npm run import:xlsx, then move here
 
-Precedence: research > tournament/scorecard > spreadsheet. Commits from the
+Precedence: tournament records > research > spreadsheet (validate_research.py lists conflicts). Commits from the
 spreadsheet are kept alongside researched ones (deduplicated by name).
 
     python collect/build_seed.py
@@ -88,17 +88,17 @@ def match_sheet(sheet, directory):
 def build_school(d, sc, tr, r, sh):
     name = (r or {}).get("shortName") or (sh or {}).get("name") or short_name(d)
 
-    # Seasons: research record > tournament-derived final record > spreadsheet.
+    # Seasons: tournament-derived final record (structured, cross-checked) > research > spreadsheet.
     rec_research = {s["year"]: s for s in (r or {}).get("seasons", []) if s.get("wins") is not None}
     rec_sheet = {s["year"]: s for s in (sh or {}).get("seasons", [])}
     seasons = []
     for y in SEASONS:
         t = tr.get(str(y))
         wins = losses = None
-        if y in rec_research:
-            wins, losses = rec_research[y]["wins"], rec_research[y]["losses"]
-        elif t and t.get("finalWins") is not None:
+        if t and t.get("finalWins") is not None:
             wins, losses = t["finalWins"], t["finalLosses"]
+        elif y in rec_research:
+            wins, losses = rec_research[y]["wins"], rec_research[y]["losses"]
         elif y in rec_sheet:
             wins, losses = rec_sheet[y]["wins"], rec_sheet[y]["losses"]
         seasons.append(
