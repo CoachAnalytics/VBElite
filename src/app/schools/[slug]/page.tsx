@@ -76,7 +76,7 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
           value={formatPct(program.winPct)}
           sub={program.recordSeasons ? `${program.wins}–${program.losses}` : "records not collected yet"}
         />
-        <Stat label="Postseason trips" value={`${program.postseasonApps}/${program.seasonsTracked}`} sub={program.bestFinish ? `Best: ${program.bestFinish}` : undefined} />
+        <Stat label="NCAA tournament trips" value={`${program.postseasonApps}/${program.seasonsTracked}`} sub={program.bestFinish ? `Best: ${program.bestFinish}` : undefined} />
         <Stat
           label="Head coach"
           value={<span className="text-base">{school.headCoach ?? "—"}</span>}

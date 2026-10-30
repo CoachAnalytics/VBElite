@@ -51,3 +51,5 @@ next-env.d.ts
 # Collected source data (re-creatable with collect/*.py); never commit — names recruits
 /data/raw
 /data/seed/*.json
+
+/data/seed/*.json.gz

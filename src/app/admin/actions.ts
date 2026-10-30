@@ -9,6 +9,8 @@ import { hashPassword } from "@/lib/password";
 import { loadSchools, type LoadSummary } from "@/lib/import/load";
 import { parseWorkbook, WorkbookError } from "@/lib/import/workbook";
 import { DIVISIONS } from "@/lib/positions";
+import type { SchoolSeed } from "@/db/seed-types";
+import { gunzipSync } from "node:zlib";
 
 export type ImportState = { error?: string; summary?: LoadSummary; fileName?: string } | undefined;
 
@@ -22,12 +24,47 @@ const options = z.object({
   rosterSeason: z.coerce.number().int().min(2000).max(2100),
 });
 
+// Minimal shape check for the generated data file (collect/build_seed.py output).
+const seedFile = z.array(
+  z
+    .object({
+      slug: z.string().min(1),
+      name: z.string().min(1),
+      division: z.string(),
+      positionsCovered: z.array(z.string()),
+      seasons: z.array(z.object({ year: z.number().int(), wins: z.number().nullable(), losses: z.number().nullable() }).passthrough()),
+      roster: z.array(z.object({ name: z.string(), classYear: z.enum(["Fr", "So", "Jr", "Sr", "Grad"]) }).passthrough()),
+      commits: z.array(z.object({ name: z.string(), gradYear: z.number().int() }).passthrough()),
+    })
+    .passthrough(),
+);
+
 export async function importWorkbook(_: ImportState, form: FormData): Promise<ImportState> {
   await requireAdmin();
   const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose an .xlsx file to upload." };
-  if (!file.name.toLowerCase().endsWith(".xlsx")) return { error: "The file must be an Excel .xlsx workbook." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
+  const fileName = file.name.toLowerCase();
 
+  // The generated school data file (schools.json or schools.json.gz).
+  if (fileName.endsWith(".json") || fileName.endsWith(".json.gz")) {
+    try {
+      let bytes: Buffer = Buffer.from(await file.arrayBuffer());
+      if (fileName.endsWith(".gz")) bytes = gunzipSync(bytes);
+      const parsed = seedFile.safeParse(JSON.parse(bytes.toString("utf8")));
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        return { error: `That data file isn't in the expected format (${issue.path.join(".")}: ${issue.message}).` };
+      }
+      const summary = await loadSchools(parsed.data as unknown as SchoolSeed[]);
+      revalidatePath("/", "layout");
+      return { summary, fileName: file.name };
+    } catch (e) {
+      console.error("Data file import failed", e);
+      return { error: "Couldn't read that data file. Upload the schools.json.gz produced by collect/build_seed.py." };
+    }
+  }
+
+  if (!fileName.endsWith(".xlsx")) return { error: "Upload an Excel .xlsx workbook or a schools.json.gz data file." };
   const parsed = options.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 

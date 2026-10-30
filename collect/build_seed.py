@@ -12,6 +12,7 @@ spreadsheet are kept alongside researched ones (deduplicated by name).
 
     python collect/build_seed.py
 """
+import gzip
 import json
 
 from common import RAW, ROOT, SEASONS, norm, read_json, slugify
@@ -233,10 +234,14 @@ def main():
 
     out = ROOT / "data" / "seed" / "schools.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(sorted(schools, key=lambda s: s["name"]), indent=2, ensure_ascii=False) + "\n")
+    ordered = sorted(schools, key=lambda s: s["name"])
+    out.write_text(json.dumps(ordered, indent=2, ensure_ascii=False) + "\n")
+    # Compact copy for the live site's Admin upload (under the 4.5 MB request limit).
+    gz = out.with_suffix(".json.gz")
+    gz.write_bytes(gzip.compress(json.dumps(ordered, ensure_ascii=False, separators=(",", ":")).encode()))
     full = sum(1 for s in schools if s["positionsCovered"] == ALL_POSITIONS)
     print(
-        f"{len(schools)} schools -> {out}\n"
+        f"{len(schools)} schools -> {out} (+ {gz.name}, {gz.stat().st_size // 1024} KB for Admin upload)\n"
         f"  researched: {len(research)}, full rosters: {full}, "
         f"with records: {sum(1 for s in schools if any(x['wins'] is not None for x in s['seasons']))}, "
         f"spreadsheet schools: {len(sheet)}"

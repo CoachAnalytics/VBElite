@@ -52,9 +52,10 @@ export default async function AdminPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Update school data</h2>
         <p className="max-w-2xl text-sm text-ink-2">
-          Upload a workbook in the Volleyball Recruiting Comparison format. Schools are matched by name: existing ones
-          are updated (their records, roster and commits are replaced) and new ones are added. Schools not in the
-          workbook are left alone.
+          Upload the generated <b>schools.json.gz</b> (every D1 school, from the private VBElite-data repo) or a workbook
+          in the Volleyball Recruiting Comparison format. Schools in the file are updated (their records, roster and
+          commits are replaced) and new ones are added; schools not in the file are left alone. The division, tuition
+          and season settings below apply to workbooks only.
         </p>
         <ImportForm />
       </section>

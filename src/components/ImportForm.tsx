@@ -10,12 +10,12 @@ export function ImportForm() {
   return (
     <form action={action} className="card space-y-4 p-5">
       <div>
-        <label htmlFor="file" className="label">Workbook (.xlsx)</label>
+        <label htmlFor="file" className="label">School data file (schools.json.gz) or workbook (.xlsx)</label>
         <input
           id="file"
           name="file"
           type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".gz,.json,.xlsx,application/gzip,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           required
           className="block w-full text-sm text-ink-2 file:mr-3 file:rounded-md file:border file:border-line file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink"
         />
