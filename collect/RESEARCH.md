@@ -2,7 +2,8 @@
 
 These are the instructions given to each research agent (a Claude session with web
 search and fetch). Each agent researches a batch of NCAA Division I women's volleyball
-programs and writes one JSON file per school to `data/raw/research/<ncaaOrgId>.json`.
+programs and writes one JSON file per school to `research/<ncaaOrgId>.json` in the private
+`CoachAnalytics/VBElite-data` repository (linked locally as `data/raw/research/`).
 `collect/build_seed.py` merges those files with the automated sources.
 
 Research files name recruits (mostly minors), so they are never committed to this
@@ -47,7 +48,7 @@ academics and NCAA tournament results (2021–2025), so **don't research those**
 
 ## Output format
 
-Write exactly this shape (no comments) to `data/raw/research/<ncaaOrgId>.json`:
+Write exactly this shape (no comments) to `research/<ncaaOrgId>.json`:
 
 ```json
 {
