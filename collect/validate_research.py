@@ -52,7 +52,9 @@ def check(path, tournament):
         extra = set(p) - PLAYER_FIELDS
         if extra:
             errors.append(f"roster player has disallowed fields {sorted(extra)}")
-        if p.get("class") not in CLASSES:
+        if p.get("class") is None:
+            warnings.append(f"roster player with unknown class (left out of projections)")
+        elif p.get("class") not in CLASSES:
             errors.append(f"roster class {p.get('class')!r} not one of {sorted(CLASSES)}")
         h = p.get("heightIn")
         if h is not None and not (60 <= h <= 82):
