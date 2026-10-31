@@ -13,20 +13,28 @@ import { POSITIONS } from "@/lib/positions";
 import { getAthlete } from "@/lib/queries";
 import { isTier } from "@/lib/tiers";
 
-// `values` echoes what was submitted so a form can refill its fields after an error.
-export type FormState = { error?: string; ok?: boolean; values?: Record<string, string> } | undefined;
+// `values` echoes what was submitted so a form can refill its fields after an error;
+// `at` changes on every failed attempt so the form re-mounts with them.
+export type FormState = { error?: string; ok?: boolean; values?: Record<string, string>; at?: number } | undefined;
 
 const credentials = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+const signupForm = credentials
+  .extend({ confirm: z.string() })
+  .refine((d) => d.password === d.confirm, { message: "The passwords don't match. Type them again." });
+
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
-  const parsed = credentials.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // Only the email is echoed back after an error; passwords are never sent back to the page.
+  const keep = { email: String(form.get("email") ?? "") };
+  const at = Date.now();
+  const parsed = signupForm.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep, at };
   const { email, password } = parsed.data;
   const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email));
-  if (existing) return { error: "An account with that email already exists. Log in instead." };
+  if (existing) return { error: "An account with that email already exists. Log in instead.", values: keep, at };
   // The first account on a new site becomes its admin, so the owner needs no setup step.
   const [anyAdmin] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.role, "admin")).limit(1);
   const role = anyAdmin ? "user" : "admin";
@@ -90,7 +98,7 @@ const athleteSchema = z.object({
 export async function saveAthlete(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
   const submitted = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
-  const fail = (error: string) => ({ error, values: submitted });
+  const fail = (error: string) => ({ error, values: submitted, at: Date.now() });
   const parsed = athleteSchema.safeParse(submitted);
   if (!parsed.success) return fail(parsed.error.issues[0].message);
   const d = parsed.data;

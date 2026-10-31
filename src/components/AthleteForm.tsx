@@ -13,7 +13,7 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
   // After an error, refill the fields with what was typed (the form resets on submit).
   const v = state?.values;
   return (
-    <form action={action} key={v ? JSON.stringify(v) : "saved"} className="card space-y-4 p-5">
+    <form action={action} key={state?.at ?? 0} className="card space-y-4 p-5">
       <div>
         <label htmlFor="name" className="label">Athlete name</label>
         <input id="name" name="name" required defaultValue={v?.name ?? athlete?.name} className="input" />

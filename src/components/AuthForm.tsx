@@ -11,11 +11,21 @@ type Props = {
 
 export function AuthForm({ action, submitLabel, passwordAutoComplete }: Props) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const isSignup = passwordAutoComplete === "new-password";
   return (
-    <form action={formAction} className="space-y-4">
+    // Remount after an error so the email is refilled (the form resets on submit).
+    <form action={formAction} key={state?.at ?? 0} className="space-y-4">
       <div>
         <label htmlFor="email" className="label">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="input" />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          defaultValue={state?.values?.email}
+          required
+          className="input"
+        />
       </div>
       <div>
         <label htmlFor="password" className="label">Password</label>
@@ -29,6 +39,20 @@ export function AuthForm({ action, submitLabel, passwordAutoComplete }: Props) {
           className="input"
         />
       </div>
+      {isSignup && (
+        <div>
+          <label htmlFor="confirm" className="label">Confirm password</label>
+          <input
+            id="confirm"
+            name="confirm"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            className="input"
+          />
+        </div>
+      )}
       {state?.error && <p className="text-sm text-bad" role="alert">{state.error}</p>}
       <button type="submit" disabled={pending} className="btn-primary w-full">
         {pending ? "Please wait…" : submitLabel}
