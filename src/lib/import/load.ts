@@ -4,15 +4,13 @@ import type { SchoolSeed } from "@/db/seed-types";
 import { lookupCity } from "@/lib/geo";
 import { isPosition, normalizePositions } from "@/lib/positions";
 
-function positionsOf(raw: string | null, fallback: string | null, primary?: string | null) {
+function positionsOf(raw: string | null, primary?: string | null) {
   const list = normalizePositions(raw);
   if (primary && isPosition(primary)) {
     // Put the curated primary position first, keeping the rest as secondary.
     list.splice(0, list.length, primary, ...list.filter((p) => p !== primary));
   }
-  // Rows collected for a single-position tab (e.g. the spreadsheet's "OH Roster") with no
-  // listed position belong to that position. Otherwise an unreadable position stays unknown.
-  if (!list.length && fallback) list.push(fallback as never);
+  // An unlisted or unreadable position stays unknown ("?") rather than being guessed.
   return { positions: list.join("/"), primaryPosition: list[0] ?? "?" };
 }
 
@@ -86,7 +84,6 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
       programNote: s.programNote,
       updatedAt: new Date(),
     };
-    const fallback = s.positionsCovered.length === 1 ? s.positionsCovered[0] : null;
 
     await db.transaction(async (tx) => {
       // Match an existing school by NCAA id (stable) or slug (older spreadsheet imports).
@@ -121,7 +118,7 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
             ...p,
             schoolId,
             season: s.rosterSeason ?? new Date().getFullYear(),
-            ...positionsOf(p.positionRaw, fallback),
+            ...positionsOf(p.positionRaw),
           })),
         );
       }
@@ -130,7 +127,7 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
           s.commits.map(({ primaryPosition, ...c }) => ({
             ...c,
             schoolId,
-            ...positionsOf(c.positionRaw, fallback, primaryPosition),
+            ...positionsOf(c.positionRaw, primaryPosition),
           })),
         );
       }

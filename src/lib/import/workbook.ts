@@ -156,7 +156,8 @@ export async function parseWorkbook(data: ArrayBuffer | Uint8Array, opts: Workbo
             name: str(r["Player"])!,
             classYear: cy,
             redshirt: str(r["Redshirt"]) === "Y",
-            positionRaw: str(r["Position"]),
+            // The tab lists outside hitters only, so a blank position means OH.
+            positionRaw: str(r["Position"]) ?? "OH",
             heightIn: int(r["Height (in)"]),
           }];
         }),
@@ -165,7 +166,7 @@ export async function parseWorkbook(data: ArrayBuffer | Uint8Array, opts: Workbo
         .map((r): CommitSeed => ({
           name: str(r["Player"])!,
           gradYear: int(r["HS Class"])!,
-          positionRaw: str(r["Position"]),
+          positionRaw: str(r["Position"]) ?? "OH",
           primaryPosition: COMMIT_TYPE_PRIMARY[str(r["Type"] ?? null)?.toLowerCase() ?? ""] ?? null,
           heightIn: int(r["Height (in)"]),
           hometown: str(r["High School / Hometown"]),

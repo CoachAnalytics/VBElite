@@ -223,6 +223,108 @@ export function positionTimeline(bundle: SchoolBundle, athlete: AthleteInput) {
   });
 }
 
+// ---------- Roster and recruiting breakdown (every position) ----------
+
+export const CLASS_YEARS = ["Fr", "So", "Jr", "Sr", "Grad"] as const;
+const POSITION_ORDER = ["S", "OH", "OPP", "MB", "LDS"];
+
+type HeightMark = { name: string; heightIn: number };
+
+export type PositionGroup = {
+  /** S, OH, OPP, MB, LDS, or "?" for players whose position isn't known. */
+  position: string;
+  byClass: Record<string, number>;
+  total: number;
+  redshirts: number;
+  /** Seniors and grad students: last season on the roster. */
+  leaving: number;
+  /** Players listed at more than one position (e.g. OH/DS). */
+  hybrids: number;
+  /** Players whose main position is elsewhere but who are also listed here. */
+  alsoListed: number;
+  avgHeight: number | null;
+  shortest: HeightMark | null;
+  tallest: HeightMark | null;
+};
+
+function heightStats(people: { name: string; heightIn: number | null }[]) {
+  const known = people.filter((p): p is HeightMark => p.heightIn != null);
+  if (!known.length) return { avgHeight: null, shortest: null, tallest: null };
+  const sorted = [...known].sort((a, b) => a.heightIn - b.heightIn);
+  return {
+    avgHeight: known.reduce((n, p) => n + p.heightIn, 0) / known.length,
+    shortest: { name: sorted[0].name, heightIn: sorted[0].heightIn },
+    tallest: { name: sorted.at(-1)!.name, heightIn: sorted.at(-1)!.heightIn },
+  };
+}
+
+/** The current roster by position and class: the spreadsheet's "OH Breakdown", for every position. */
+export function rosterBreakdown(roster: RosterPlayer[]): PositionGroup[] {
+  const groups = [...POSITION_ORDER, "?"].map((position): PositionGroup => {
+    const players = roster.filter((p) => (p.primaryPosition || "?") === position);
+    const byClass = Object.fromEntries(CLASS_YEARS.map((c) => [c, players.filter((p) => p.classYear === c).length]));
+    return {
+      position,
+      byClass,
+      total: players.length,
+      redshirts: players.filter((p) => p.redshirt).length,
+      leaving: players.filter((p) => (SEASONS_LEFT[p.classYear] ?? 0) === 0).length,
+      hybrids: players.filter((p) => p.positions.includes("/")).length,
+      alsoListed:
+        position === "?"
+          ? 0
+          : roster.filter((p) => p.primaryPosition !== position && p.positions.split("/").includes(position)).length,
+      ...heightStats(players),
+    };
+  });
+  return groups.filter((g) => g.position !== "?" || g.total > 0);
+}
+
+export type PipelineRow = {
+  position: string;
+  /** Commits whose main position is this one, by high-school class. */
+  byClass: Record<number, number>;
+  /** Commits listed here as a secondary position (hybrids), by class. */
+  hybridByClass: Record<number, number>;
+  total: number;
+  avgHeight: number | null;
+};
+
+export type RecruitingPipeline = {
+  classes: number[];
+  rows: PipelineRow[];
+  totalByClass: Record<number, number>;
+  total: number;
+};
+
+/** Commits by position and class: the spreadsheet's "Recruiting Pipeline", for every position. */
+export function recruitingPipeline(commits: Commit[], classes: number[]): RecruitingPipeline {
+  const inScope = commits.filter((c) => classes.includes(c.gradYear));
+  const count = (list: Commit[]) => Object.fromEntries(classes.map((y) => [y, list.filter((c) => c.gradYear === y).length]));
+  const rows = [...POSITION_ORDER, "?"].map((position): PipelineRow => {
+    const primary = inScope.filter((c) => (c.primaryPosition || "?") === position);
+    const hybrid = inScope.filter((c) => c.primaryPosition !== position && c.positions.split("/").includes(position));
+    return {
+      position,
+      byClass: count(primary),
+      hybridByClass: count(hybrid),
+      total: primary.length,
+      avgHeight: heightStats(primary).avgHeight,
+    };
+  });
+  return {
+    classes,
+    rows: rows.filter((r) => r.position !== "?" || r.total > 0),
+    totalByClass: count(inScope),
+    total: inScope.length,
+  };
+}
+
+/** The high-school classes whose commits matter now: the next three to enroll after the roster season. */
+export function pipelineClasses(rosterSeason: number): number[] {
+  return [rosterSeason + 1, rosterSeason + 2, rosterSeason + 3];
+}
+
 // ---------- Cost, distance, coach ----------
 
 export type CostSummary = { tuition: number | null; inState: boolean; estimated: boolean };
@@ -279,6 +381,18 @@ export type SchoolAnalysis = {
   medianEarnings: number | null;
   commitDataQuality: string | null;
   recruitingNote: string | null;
+  tuitionInState: number | null;
+  tuitionOutState: number | null;
+  costOfAttendance: number | null;
+  act25: number | null;
+  act75: number | null;
+  retentionRate: number | null;
+  /** Positions with complete roster and commit data. */
+  coveredPositions: string[];
+  rosterSeason: number;
+  rosterCount: number;
+  breakdown: PositionGroup[];
+  pipeline: RecruitingPipeline;
   program: ProgramSummary;
   position: PositionOutlook;
   cost: CostSummary;
@@ -287,6 +401,7 @@ export type SchoolAnalysis = {
 
 export function analyzeSchool(bundle: SchoolBundle, athlete: AthleteInput, asOf: Date = new Date()): SchoolAnalysis {
   const s = bundle.school;
+  const rosterSeason = s.rosterSeason ?? asOf.getUTCFullYear();
   return {
     id: s.id,
     slug: s.slug,
@@ -309,6 +424,17 @@ export function analyzeSchool(bundle: SchoolBundle, athlete: AthleteInput, asOf:
     medianEarnings: s.medianEarnings,
     commitDataQuality: s.commitDataQuality,
     recruitingNote: s.recruitingNote,
+    tuitionInState: s.tuitionInState,
+    tuitionOutState: s.tuitionOutState,
+    costOfAttendance: s.costOfAttendance,
+    act25: s.act25,
+    act75: s.act75,
+    retentionRate: s.retentionRate,
+    coveredPositions: s.positionsCovered.split(",").filter(Boolean),
+    rosterSeason,
+    rosterCount: bundle.roster.length,
+    breakdown: rosterBreakdown(bundle.roster),
+    pipeline: recruitingPipeline(bundle.commits, pipelineClasses(rosterSeason)),
     program: programSummary(bundle.seasons),
     position: positionOutlook(bundle, athlete, asOf),
     cost: costFor(s, athlete),

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { AthleteInput, SchoolBundle } from "./analytics";
 import type { Athlete } from "@/db/schema";
@@ -27,7 +27,7 @@ export async function getSavedSchools(athleteId: number) {
     .where(eq(schema.savedSchools.athleteId, athleteId));
 }
 
-export type SchoolFilters = { q?: string; division?: string; state?: string; conference?: string };
+export type SchoolFilters = { q?: string; division?: string; state?: string; conference?: string; control?: string };
 
 export async function listSchools(f: SchoolFilters) {
   const where: SQL[] = [];
@@ -38,6 +38,7 @@ export async function listSchools(f: SchoolFilters) {
   if (f.division) where.push(eq(schema.schools.division, f.division));
   if (f.state) where.push(eq(schema.schools.state, f.state));
   if (f.conference) where.push(eq(schema.schools.conference, f.conference));
+  if (f.control) where.push(eq(schema.schools.control, f.control));
   const schools = await db
     .select()
     .from(schema.schools)
@@ -83,4 +84,24 @@ export async function getSchoolBundleBySlug(slug: string): Promise<SchoolBundle 
   if (!s) return null;
   const [bundle] = await getSchoolBundles([s.id]);
   return bundle ?? null;
+}
+
+/** Players and commits (classes `from`–`to`) whose main position is `position`, per school. */
+export async function positionCounts(position: string, from: number, to: number) {
+  const [roster, commits] = await Promise.all([
+    db
+      .select({ schoolId: schema.rosterPlayers.schoolId, n: count() })
+      .from(schema.rosterPlayers)
+      .where(eq(schema.rosterPlayers.primaryPosition, position))
+      .groupBy(schema.rosterPlayers.schoolId),
+    db
+      .select({ schoolId: schema.commits.schoolId, n: count() })
+      .from(schema.commits)
+      .where(and(eq(schema.commits.primaryPosition, position), gte(schema.commits.gradYear, from), lte(schema.commits.gradYear, to)))
+      .groupBy(schema.commits.schoolId),
+  ]);
+  return {
+    roster: new Map(roster.map((r) => [r.schoolId, r.n])),
+    incoming: new Map(commits.map((r) => [r.schoolId, r.n])),
+  };
 }

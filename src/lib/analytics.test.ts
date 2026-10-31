@@ -7,7 +7,10 @@ import {
   DEFAULT_WEIGHTS,
   positionOutlook,
   positionTimeline,
+  pipelineClasses,
   programSummary,
+  recruitingPipeline,
+  rosterBreakdown,
   scoreSchools,
   type AthleteInput,
   type SchoolBundle,
@@ -266,5 +269,50 @@ describe("scoreSchools", () => {
     const [sa, sb] = scoreSchools([a, b], onlyCost);
     expect(sa.score).toBe(100);
     expect(sb.score).toBe(0);
+  });
+});
+
+describe("rosterBreakdown", () => {
+  it("counts every position by class, with redshirts, departures and heights", () => {
+    const roster = [
+      player("Fr", "S", 70),
+      player("Sr", "OH", 74),
+      { ...player("Jr", "OH/LDS", 69), redshirt: true },
+      player("Grad", "MB", 76),
+      { ...player("So", "OH", 71), positionRaw: null, positions: "", primaryPosition: "" },
+    ];
+    const groups = rosterBreakdown(roster);
+    expect(groups.map((g) => g.position)).toEqual(["S", "OH", "OPP", "MB", "LDS", "?"]);
+    const oh = groups.find((g) => g.position === "OH")!;
+    expect(oh.total).toBe(2);
+    expect(oh.byClass).toMatchObject({ Jr: 1, Sr: 1 });
+    expect(oh.redshirts).toBe(1);
+    expect(oh.leaving).toBe(1);
+    expect(oh.hybrids).toBe(1);
+    expect(oh.avgHeight).toBe(71.5);
+    expect(oh.shortest?.heightIn).toBe(69);
+    expect(groups.find((g) => g.position === "LDS")!.alsoListed).toBe(1);
+    expect(groups.find((g) => g.position === "MB")!.leaving).toBe(1);
+    expect(groups.find((g) => g.position === "?")!.total).toBe(1);
+  });
+
+  it("leaves out the unknown row when every position is known", () => {
+    expect(rosterBreakdown([player("Fr", "S")]).some((g) => g.position === "?")).toBe(false);
+  });
+});
+
+describe("recruitingPipeline", () => {
+  it("counts commits by position and class, hybrids separately", () => {
+    const p = recruitingPipeline(
+      [commit(2027, "OH", 72), commit(2027, "OH/LDS", 70), commit(2028, "LDS/OH"), commit(2028, "MB"), commit(2026, "S")],
+      pipelineClasses(2026),
+    );
+    expect(p.classes).toEqual([2027, 2028, 2029]);
+    expect(p.total).toBe(4); // the 2026 commit is already enrolled
+    expect(p.totalByClass).toEqual({ 2027: 2, 2028: 2, 2029: 0 });
+    const oh = p.rows.find((r) => r.position === "OH")!;
+    expect(oh.byClass).toEqual({ 2027: 2, 2028: 0, 2029: 0 });
+    expect(oh.hybridByClass).toEqual({ 2027: 0, 2028: 1, 2029: 0 });
+    expect(oh.avgHeight).toBe(71);
   });
 });

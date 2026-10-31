@@ -6,6 +6,7 @@ import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { athleteInput, getAthlete, getSavedSchools, getSchoolBundles } from "@/lib/queries";
 import { CompareDashboard } from "@/components/CompareDashboard";
+import { CompareTables } from "@/components/CompareTables";
 
 export default async function ComparePage() {
   const user = await requireUser();
@@ -36,7 +37,16 @@ export default async function ComparePage() {
           <Link href="/schools" className="btn-primary mt-4">Choose schools</Link>
         </div>
       ) : (
-        <CompareDashboard analyses={analyses} athleteName={athlete.name} position={athlete.position} gradYear={athlete.gradYear} />
+        <>
+          <CompareDashboard analyses={analyses} athleteName={athlete.name} position={athlete.position} gradYear={athlete.gradYear} />
+          <div>
+            <h2 className="text-xl font-semibold">Side by side</h2>
+            <p className="mt-1 text-sm text-ink-2">
+              Your schools in spreadsheet form. Switch positions to see any spot on the court, and download any view to open it in Excel.
+            </p>
+          </div>
+          <CompareTables analyses={analyses} defaultPosition={athlete.position} />
+        </>
       )}
     </div>
   );

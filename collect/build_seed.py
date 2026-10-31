@@ -56,6 +56,16 @@ def class_year(c: str | None):
     return {"fr": "Fr", "so": "So", "jr": "Jr", "sr": "Sr"}.get(c[:2])
 
 
+def same_recruit(a, b) -> bool:
+    """Same class and last name, and first names that start alike ("Elly" / "Ellyson")."""
+    if a.get("gradYear") != b.get("gradYear"):
+        return False
+    na, nb = norm(a["name"]).split(), norm(b["name"]).split()
+    if not na or not nb or na[-1] != nb[-1]:
+        return False
+    return na[0][:3] == nb[0][:3]
+
+
 def load_research():
     out = {}
     for p in sorted((RAW / "research").glob("*.json")):
@@ -107,40 +117,47 @@ def build_school(d, sc, tr, r, sh):
 
     roster, commits, covered, quality, sources = [], [], [], None, []
     rr = (r or {}).get("roster") or {}
+    # The hand-researched spreadsheet lists every outside hitter for its schools; use it to
+    # fill positions the research couldn't find.
+    sheet_roster = {norm(p["name"]): p for p in (sh or {}).get("roster", [])}
     if rr.get("players"):
         for p in rr["players"]:
             cy = class_year(p.get("class"))
             if cy and p.get("name"):
+                position = p.get("position") or (sheet_roster.get(norm(p["name"])) or {}).get("positionRaw")
                 roster.append(
                     {
                         "name": p["name"],
                         "classYear": cy,
                         "redshirt": bool(p.get("redshirt")),
-                        "positionRaw": p.get("position"),
+                        "positionRaw": position,
                         "heightIn": p.get("heightIn"),
                     }
                 )
         # Only project playing time from rosters that are complete AND say who plays where;
         # otherwise every position would look empty.
-        with_position = sum(1 for p in rr["players"] if p.get("position"))
+        with_position = sum(1 for p in roster if p.get("positionRaw"))
         if rr.get("complete") and with_position >= 0.8 * len(rr["players"]):
             covered = ALL_POSITIONS
+        elif sh and sh.get("positionsCovered"):
+            covered = sh["positionsCovered"]  # the spreadsheet's position (outside hitter) is complete
         if rr.get("source"):
             sources.append(rr["source"])
     elif sh and sh.get("roster"):
         roster, covered = sh["roster"], sh.get("positionsCovered", ["OH"])
 
     rc = (r or {}).get("commits") or {}
-    seen = set()
+    sheet_commits = {norm(c["name"]): c for c in (sh or {}).get("commits", [])}
     for c in rc.get("players") or []:
         if not c.get("name") or not c.get("gradYear"):
             continue
-        seen.add(norm(c["name"]))
         commits.append(
             {
                 "name": c["name"],
                 "gradYear": c["gradYear"],
                 "positionRaw": c.get("position"),
+                # The spreadsheet's judgment of where a hybrid recruit will play, when it has one.
+                "primaryPosition": (sheet_commits.get(norm(c["name"])) or {}).get("primaryPosition"),
                 "heightIn": c.get("heightIn"),
                 "highSchool": c.get("highSchool"),
                 "hometown": c.get("hometown"),
@@ -150,7 +167,12 @@ def build_school(d, sc, tr, r, sh):
             }
         )
     for c in (sh or {}).get("commits", []):
-        if norm(c["name"]) not in seen:
+        match = next((x for x in commits if same_recruit(x, c)), None)
+        if match:
+            # Same recruit under a nickname: keep the research entry, fill its gaps from the spreadsheet.
+            for k in ("heightIn", "club", "hometown", "primaryPosition"):
+                match[k] = match.get(k) or c.get(k)
+        else:
             commits.append({**c, "source": c.get("source") or "VB Elite research spreadsheet"})
     if r and rc:
         quality = {"good": "good", "partial": "partial", "none_found": "partial"}.get(rc.get("completeness"))
@@ -164,7 +186,9 @@ def build_school(d, sc, tr, r, sh):
         sources += [x for x in [coach.get("source"), apr.get("source")] if x]
         sources += [s.get("source") for s in r.get("seasons", []) if s.get("source")]
 
-    notes = [x for x in [(r or {}).get("notes"), (sh or {}).get("recruitingNote")] if x]
+    # Research notes are working notes for reviewers (blocked sites, source conflicts); only the
+    # spreadsheet's recruiting note is written for families.
+    notes = [x for x in [(sh or {}).get("recruitingNote")] if x]
     return {
         "slug": slugify(name),
         "name": name,
@@ -198,9 +222,11 @@ def build_school(d, sc, tr, r, sh):
         "studentFacultyRatio": sc.get("studentFacultyRatio"),
         "headCoach": coach.get("name") or (sh or {}).get("headCoach"),
         "coachSince": coach.get("since") or (sh or {}).get("coachSince"),
+        # The APR and its note come from the same source; a research note explaining a missing
+        # APR is for reviewers, not families.
         "apr": apr.get("value") if apr.get("value") is not None else (sh or {}).get("apr"),
-        "aprNote": apr.get("year") or apr.get("note") or (sh or {}).get("aprNote"),
-        "rosterSize": len(roster) if covered == ALL_POSITIONS else (sh or {}).get("rosterSize"),
+        "aprNote": (apr.get("year") or apr.get("note")) if apr.get("value") is not None else (sh or {}).get("aprNote"),
+        "rosterSize": len(roster) if rr.get("complete") else (sh or {}).get("rosterSize"),
         "rosterSeason": ROSTER_SEASON,
         "positionsCovered": covered,
         "commitDataQuality": quality,

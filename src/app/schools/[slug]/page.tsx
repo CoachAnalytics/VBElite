@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { toggleSchool } from "../../actions";
 import { requireUser } from "@/lib/auth";
-import { analyzeSchool, positionTimeline, programSummary } from "@/lib/analytics";
+import { analyzeSchool, pipelineClasses, positionTimeline, programSummary, recruitingPipeline, rosterBreakdown } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { athleteInput, getAthlete, getSavedSchools, getSchoolBundleBySlug } from "@/lib/queries";
 import { PositionTimelineChart, WinPctChart } from "@/components/SchoolCharts";
+import { PipelineTable, RosterBreakdownTable } from "@/components/BreakdownTables";
 
 function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
@@ -41,14 +42,24 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
     }
   })();
   const covered = pos ? school.positionsCovered.split(",").includes(pos) : false;
-  const roster = pos
-    ? bundle.roster
-        .filter((p) => p.positions.split("/").includes(pos))
-        .sort((x, y) => CLASS_ORDER.indexOf(x.classYear) - CLASS_ORDER.indexOf(y.classYear))
-    : [];
-  const commits = pos
-    ? bundle.commits.filter((c) => c.positions.split("/").includes(pos)).sort((x, y) => x.gradYear - y.gradYear)
-    : [];
+  const rosterSeason = school.rosterSeason ?? new Date().getUTCFullYear();
+  const breakdown = rosterBreakdown(bundle.roster);
+  const pipeline = recruitingPipeline(bundle.commits, pipelineClasses(rosterSeason));
+  const unlisted = bundle.roster.filter((p) => !p.primaryPosition || p.primaryPosition === "?").length;
+  // Whole roster and every commit: the athlete's position first, then by position and class.
+  const POS_ORDER = ["S", "OH", "OPP", "MB", "LDS", "?"];
+  const posRank = (p: string) => (p === pos ? -1 : POS_ORDER.indexOf(p));
+  const roster = [...bundle.roster].sort(
+    (x, y) =>
+      posRank(x.primaryPosition) - posRank(y.primaryPosition) ||
+      CLASS_ORDER.indexOf(x.classYear) - CLASS_ORDER.indexOf(y.classYear),
+  );
+  const commits = [...bundle.commits].sort(
+    (x, y) => x.gradYear - y.gradYear || posRank(x.primaryPosition) - posRank(y.primaryPosition),
+  );
+  const isMine = (positions: string) => !!pos && positions.split("/").includes(pos);
+  // A recruit 4+ years out arrives after everyone on today's roster has finished.
+  const allGone = !!a && a.position.yearsUntilArrival >= 4 && a.position.returningAtArrival === 0;
 
   return (
     <div className="space-y-8">
@@ -103,12 +114,21 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Stat label={`${pos}s on the ${a.position.rosterSeason} roster`} value={a.position.currentAtPosition}
                   sub={CLASS_ORDER.map((c) => `${c} ${a.position.currentByClass[c] ?? 0}`).join(" · ")} />
-                <Stat label={`Still there in fall ${athlete.gradYear}`} value={a.position.returningAtArrival} />
+                <Stat label={`Still there in fall ${athlete.gradYear}`} value={a.position.returningAtArrival}
+                  sub={allGone ? "today's roster will have graduated" : undefined} />
                 <Stat label="Commits in classes ahead" value={a.position.commitsAhead}
                   sub={Object.entries(a.position.commitsAheadByClass).map(([y, n]) => `${y}: ${n}`).join(" · ") || undefined} />
                 <Stat label={`Commits in the ${athlete.gradYear} class`} value={a.position.sameClassCommits}
                   sub={a.position.heightDelta != null ? `You're ${a.position.heightDelta >= 0 ? "+" : "−"}${Math.abs(a.position.heightDelta).toFixed(1)}" vs. ${pos} avg ${formatHeight(a.position.avgHeightAtPosition)}` : undefined} />
               </div>
+              {allGone && (
+                <p className="card p-4 text-sm text-ink-2">
+                  Everyone at {pos} on today&apos;s roster will have finished by fall {athlete.gradYear}. The players{" "}
+                  {athlete.name} would compete with are the commits in the classes ahead
+                  {Object.keys(a.position.commitsAheadByClass).length > 0 && ` (${Object.keys(a.position.commitsAheadByClass).join(", ")})`},
+                  her own class, and transfers. The recruiting pipeline below shows who has committed so far.
+                </p>
+              )}
               {(school.commitDataQuality === "partial" || a.position.classesNotYetRecruited.length > 0 || school.recruitingNote) && (
                 <div className="card space-y-1 border-warn/40 p-4 text-sm text-ink-2">
                   {school.commitDataQuality === "partial" && <p>⚠ Public commit lists for {school.name} look incomplete. Confirm with the coaching staff.</p>}
@@ -179,61 +199,97 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
         </div>
       </section>
 
-      {pos && covered && (
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="card overflow-x-auto">
-            <h2 className="px-4 pt-4 font-medium">Current {pos}s ({school.rosterSeason})</h2>
-            <table className="mt-2 w-full text-sm">
-              <thead className="border-b border-line text-left text-xs text-ink-3">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Player</th>
-                  <th className="px-4 py-2 font-medium">Class</th>
-                  <th className="px-4 py-2 font-medium">Pos</th>
-                  <th className="px-4 py-2 text-right font-medium">Height</th>
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">Roster by position ({rosterSeason})</h2>
+          <p className="text-sm text-ink-2">
+            Every player on the current roster by main position and class.
+            {pos && ` ${positionLabel(pos)}s are highlighted.`}
+            {unlisted > 0 && ` No public source lists a position for ${unlisted} player${unlisted > 1 ? "s" : ""} yet.`}
+          </p>
+        </div>
+        {bundle.roster.length ? (
+          <RosterBreakdownTable groups={breakdown} rosterSeason={rosterSeason} highlight={pos} />
+        ) : (
+          <p className="card p-4 text-sm text-ink-3">The {rosterSeason} roster hasn&apos;t been collected yet.</p>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">Recruiting pipeline</h2>
+          <p className="text-sm text-ink-2">
+            Verbal commits and signees by main position for the next three classes to arrive. &quot;Hybrid&quot; counts recruits
+            who list the position second (an OH/DS is counted as an outside hitter, plus a hybrid defensive specialist).
+            {school.commitDataQuality === "partial" && " Public commit lists for this school look incomplete, so there may be more."}
+          </p>
+        </div>
+        <PipelineTable pipeline={pipeline} highlight={pos} />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="card relative overflow-x-auto">
+          <h2 className="px-4 pt-4 font-medium">Full roster ({rosterSeason}) · {bundle.roster.length} players</h2>
+          <table className="mt-2 w-full text-sm">
+            <thead className="border-b border-line text-left text-xs text-ink-3">
+              <tr>
+                <th className="px-4 py-2 font-medium">Player</th>
+                <th className="px-4 py-2 font-medium">Class</th>
+                <th className="px-4 py-2 font-medium">Position</th>
+                <th className="px-4 py-2 text-right font-medium">Height</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roster.map((p) => (
+                <tr key={p.id} className={`border-b border-line last:border-0 ${isMine(p.positions) ? "bg-accent/10" : ""}`}>
+                  <td className="px-4 py-2">{p.name}</td>
+                  <td className="px-4 py-2 text-ink-2">{p.redshirt ? `R-${p.classYear}` : p.classYear}</td>
+                  <td className="px-4 py-2 text-ink-2">{p.positionRaw ?? "—"}</td>
+                  <td className="tabular px-4 py-2 text-right">{formatHeight(p.heightIn)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {roster.map((p) => (
-                  <tr key={p.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2">{p.name}</td>
-                    <td className="px-4 py-2 text-ink-2">{p.redshirt ? `R-${p.classYear}` : p.classYear}</td>
-                    <td className="px-4 py-2 text-ink-2">{p.positionRaw}</td>
-                    <td className="tabular px-4 py-2 text-right">{formatHeight(p.heightIn)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="card overflow-x-auto">
-            <h2 className="px-4 pt-4 font-medium">Committed {pos}s</h2>
-            <table className="mt-2 w-full text-sm">
-              <thead className="border-b border-line text-left text-xs text-ink-3">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Player</th>
-                  <th className="px-4 py-2 font-medium">Class</th>
-                  <th className="px-4 py-2 font-medium">Pos</th>
-                  <th className="px-4 py-2 text-right font-medium">Height</th>
-                  <th className="px-4 py-2 font-medium">Club</th>
+              ))}
+              {!roster.length && (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-ink-3">Roster not collected yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="card relative overflow-x-auto">
+          <h2 className="px-4 pt-4 font-medium">Commits · {commits.length}</h2>
+          <table className="mt-2 w-full text-sm">
+            <thead className="border-b border-line text-left text-xs text-ink-3">
+              <tr>
+                <th className="px-4 py-2 font-medium">Player</th>
+                <th className="px-4 py-2 font-medium">Class</th>
+                <th className="px-4 py-2 font-medium">Position</th>
+                <th className="px-4 py-2 text-right font-medium">Height</th>
+                <th className="px-4 py-2 font-medium">High school · club</th>
+              </tr>
+            </thead>
+            <tbody>
+              {commits.map((c) => (
+                <tr key={c.id} className={`border-b border-line last:border-0 ${isMine(c.positions) ? "bg-accent/10" : ""}`}>
+                  <td className="px-4 py-2">{c.name}{c.note && <div className="text-xs text-ink-3">{c.note}</div>}</td>
+                  <td className="px-4 py-2 text-ink-2">{c.gradYear}</td>
+                  <td className="px-4 py-2 text-ink-2">
+                    {c.positionRaw ?? "—"}
+                    {c.primaryPosition && c.positions.includes("/") && (
+                      <div className="text-xs text-ink-3">projects as {c.primaryPosition === "LDS" ? "L/DS" : c.primaryPosition}</div>
+                    )}
+                  </td>
+                  <td className="tabular px-4 py-2 text-right">{formatHeight(c.heightIn)}</td>
+                  <td className="px-4 py-2 text-ink-2">
+                    {[c.highSchool ?? c.hometown, c.club].filter(Boolean).join(" · ") || "—"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {commits.map((c) => (
-                  <tr key={c.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2">{c.name}{c.note && <div className="text-xs text-ink-3">{c.note}</div>}</td>
-                    <td className="px-4 py-2 text-ink-2">{c.gradYear}</td>
-                    <td className="px-4 py-2 text-ink-2">{c.positionRaw}</td>
-                    <td className="tabular px-4 py-2 text-right">{formatHeight(c.heightIn)}</td>
-                    <td className="px-4 py-2 text-ink-2">{c.club ?? "—"}</td>
-                  </tr>
-                ))}
-                {!commits.length && (
-                  <tr><td colSpan={5} className="px-4 py-6 text-center text-ink-3">No {pos} commits found.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+              ))}
+              {!commits.length && (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-ink-3">No commits found yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="space-y-1 text-sm text-ink-2">
         {school.programNote && <p>{school.programNote}</p>}
