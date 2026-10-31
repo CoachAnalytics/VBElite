@@ -71,6 +71,7 @@ export function isAdmin(user: { email: string; role?: string } | null): boolean 
 
 export async function requireAdmin() {
   const user = await getCurrentUser();
+  if (!user) redirect("/login");
   if (!isAdmin(user)) notFound();
   return user!;
 }

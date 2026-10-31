@@ -22,6 +22,13 @@
       "when": 1793374295345,
       "tag": "0002_d1_directory",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793420516879,
+      "tag": "0003_promote_first_admin",
+      "breakpoints": true
     }
   ]
 }
