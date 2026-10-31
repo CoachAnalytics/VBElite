@@ -173,6 +173,20 @@ export const savedSchools = pgTable(
   (t) => [primaryKey({ columns: [t.athleteId, t.schoolId] })],
 );
 
+// One row per attempt to pull schools.json.gz from the private data repo (daily cron or "Sync now").
+export const dataSyncs = pgTable("data_syncs", {
+  id: serial("id").primaryKey(),
+  ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
+  // schedule | manual
+  trigger: text("trigger").notNull(),
+  // imported | unchanged | error
+  status: text("status").notNull(),
+  // Git blob SHA of the file that was imported (or found unchanged)
+  sha: text("sha"),
+  schools: integer("schools"),
+  message: text("message"),
+});
+
 export type School = typeof schools.$inferSelect;
 export type Season = typeof seasons.$inferSelect;
 export type RosterPlayer = typeof rosterPlayers.$inferSelect;

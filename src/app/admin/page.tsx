@@ -4,12 +4,17 @@ import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { ImportForm } from "@/components/ImportForm";
 import { AddAdminForm } from "@/components/AddAdminForm";
-import { removeAdmin } from "./actions";
+import { SyncButton } from "@/components/SyncButton";
+import { dataRepo, syncConfigured } from "@/lib/sync";
+import { removeAdmin, syncNow } from "./actions";
+
+// Uploads and "Sync now" load every school, which can take a minute or two.
+export const maxDuration = 300;
 
 export default async function AdminPage() {
   const me = await requireAdmin();
 
-  const [[users], [athletes], divisions, recent, admins] = await Promise.all([
+  const [[users], [athletes], divisions, recent, admins, syncs] = await Promise.all([
     db.select({ n: count() }).from(schema.users),
     db.select({ n: count() }).from(schema.athletes),
     db
@@ -36,9 +41,13 @@ export default async function AdminPage() {
       .from(schema.users)
       .where(eq(schema.users.role, "admin"))
       .orderBy(schema.users.createdAt),
+    db.select().from(schema.dataSyncs).orderBy(desc(schema.dataSyncs.ranAt)).limit(5),
   ]);
   const fmt = (d: Date | null) =>
     d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  const fmtTime = (d: Date) =>
+    new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+  const configured = syncConfigured();
 
   return (
     <div className="space-y-8">
@@ -50,7 +59,40 @@ export default async function AdminPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Update school data</h2>
+        <h2 className="text-lg font-medium">Automatic updates</h2>
+        <p className="max-w-2xl text-sm text-ink-2">
+          {configured ? (
+            <>
+              Every morning the site checks the private <b>{dataRepo()}</b> repo for a new <b>schools.json.gz</b> and
+              loads it if it changed. Use Sync now to check right away.
+            </>
+          ) : (
+            <>
+              Not set up yet. Add a <b>DATA_REPO_TOKEN</b> setting in Vercel (a read-only GitHub token for{" "}
+              <b>{dataRepo()}</b>) and the site will load new school data by itself every morning.
+            </>
+          )}
+        </p>
+        <div className="card divide-y divide-line">
+          {syncs.map((s) => (
+            <div key={s.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+              <span className="tabular text-ink-3">{fmtTime(s.ranAt)} ET</span>
+              <span className={s.status === "error" ? "font-medium text-bad" : s.status === "imported" ? "font-medium" : "text-ink-2"}>
+                {s.status === "imported" ? "Updated" : s.status === "unchanged" ? "No changes" : "Failed"}
+              </span>
+              <span className="text-ink-2">{s.message}</span>
+              <span className="text-xs text-ink-3">{s.trigger === "manual" ? "Sync now" : "automatic"}</span>
+            </div>
+          ))}
+          {syncs.length === 0 && <p className="px-4 py-2.5 text-sm text-ink-3">No updates have run yet.</p>}
+          <form action={syncNow} className="px-4 py-3">
+            <SyncButton disabled={!configured} />
+          </form>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Upload school data</h2>
         <p className="max-w-2xl text-sm text-ink-2">
           Upload the generated <b>schools.json.gz</b> (every D1 school, from the private VBElite-data repo) or a workbook
           in the Volleyball Recruiting Comparison format. Schools in the file are updated (their records, roster and

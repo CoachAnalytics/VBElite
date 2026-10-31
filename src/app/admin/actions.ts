@@ -7,10 +7,10 @@ import { db, schema } from "@/db";
 import { requireAdmin } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { loadSchools, type LoadSummary } from "@/lib/import/load";
+import { parseSeedFile } from "@/lib/import/seedFile";
 import { parseWorkbook, WorkbookError } from "@/lib/import/workbook";
 import { DIVISIONS } from "@/lib/positions";
-import type { SchoolSeed } from "@/db/seed-types";
-import { gunzipSync } from "node:zlib";
+import { syncFromDataRepo } from "@/lib/sync";
 
 export type ImportState = { error?: string; summary?: LoadSummary; fileName?: string } | undefined;
 
@@ -24,21 +24,6 @@ const options = z.object({
   rosterSeason: z.coerce.number().int().min(2000).max(2100),
 });
 
-// Minimal shape check for the generated data file (collect/build_seed.py output).
-const seedFile = z.array(
-  z
-    .object({
-      slug: z.string().min(1),
-      name: z.string().min(1),
-      division: z.string(),
-      positionsCovered: z.array(z.string()),
-      seasons: z.array(z.object({ year: z.number().int(), wins: z.number().nullable(), losses: z.number().nullable() }).passthrough()),
-      roster: z.array(z.object({ name: z.string(), classYear: z.enum(["Fr", "So", "Jr", "Sr", "Grad"]) }).passthrough()),
-      commits: z.array(z.object({ name: z.string(), gradYear: z.number().int() }).passthrough()),
-    })
-    .passthrough(),
-);
-
 export async function importWorkbook(_: ImportState, form: FormData): Promise<ImportState> {
   await requireAdmin();
   const file = form.get("file");
@@ -48,14 +33,9 @@ export async function importWorkbook(_: ImportState, form: FormData): Promise<Im
   // The generated school data file (schools.json or schools.json.gz).
   if (fileName.endsWith(".json") || fileName.endsWith(".json.gz")) {
     try {
-      let bytes: Buffer = Buffer.from(await file.arrayBuffer());
-      if (fileName.endsWith(".gz")) bytes = gunzipSync(bytes);
-      const parsed = seedFile.safeParse(JSON.parse(bytes.toString("utf8")));
-      if (!parsed.success) {
-        const issue = parsed.error.issues[0];
-        return { error: `That data file isn't in the expected format (${issue.path.join(".")}: ${issue.message}).` };
-      }
-      const summary = await loadSchools(parsed.data as unknown as SchoolSeed[]);
+      const parsed = parseSeedFile(Buffer.from(await file.arrayBuffer()), fileName.endsWith(".gz"));
+      if ("error" in parsed) return { error: parsed.error };
+      const summary = await loadSchools(parsed.seeds);
       revalidatePath("/", "layout");
       return { summary, fileName: file.name };
     } catch (e) {
@@ -79,6 +59,13 @@ export async function importWorkbook(_: ImportState, form: FormData): Promise<Im
     console.error("Workbook import failed", e);
     return { error: "Couldn't read that workbook. Check it matches the Volleyball Recruiting Comparison format." };
   }
+}
+
+/** "Sync now" on the Admin page: same as the daily automatic update. The result is logged and shown on the page. */
+export async function syncNow() {
+  await requireAdmin();
+  const result = await syncFromDataRepo("manual");
+  revalidatePath(result.status === "imported" ? "/" : "/admin", result.status === "imported" ? "layout" : "page");
 }
 
 export type AdminState = { error?: string; message?: string } | undefined;
