@@ -5,13 +5,17 @@ export function formatHeight(inches: number | null | undefined): string {
   return `${ft}'${rem}"`;
 }
 
-/** Parses 6'2", 6-2, 6 2, or plain inches (74). */
+/** Parses 6'2", 6-2, 6 2, 6 ft 2 in, or plain inches (74). Phones' curly quotes (6’2”) work too. */
 export function parseHeight(value: string | null | undefined): number | null {
   if (!value) return null;
-  const s = value.trim();
-  const m = s.match(/^(\d)\s*(?:'|ft|-|\s)\s*(\d{1,2}(?:\.\d)?)?\s*(?:"|in)?$/i);
+  const s = value
+    .trim()
+    .replace(/[\u2018\u2019\u2032`´]/g, "'")
+    .replace(/[\u201C\u201D\u2033]/g, '"')
+    .replace(/''/g, '"');
+  const m = s.match(/^(\d)\s*(?:'|ft\.?|feet|-|\s)\s*(\d{1,2}(?:\.\d)?)?\s*(?:"+|in\.?|inches)?$/i);
   if (m) return Number(m[1]) * 12 + (m[2] ? Number(m[2]) : 0);
-  const n = Number(s);
+  const n = Number(s.replace(/"+$|\s*in(ches)?\.?$/i, ""));
   return Number.isFinite(n) && n > 48 && n < 96 ? n : null;
 }
 

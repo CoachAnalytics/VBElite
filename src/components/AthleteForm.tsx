@@ -10,16 +10,18 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
   const [state, action, pending] = useActionState(saveAthlete, undefined);
   const year = new Date().getFullYear();
   const years = Array.from({ length: 8 }, (_, i) => year + i);
+  // After an error, refill the fields with what was typed (the form resets on submit).
+  const v = state?.values;
   return (
-    <form action={action} className="card space-y-4 p-5">
+    <form action={action} key={v ? JSON.stringify(v) : "saved"} className="card space-y-4 p-5">
       <div>
         <label htmlFor="name" className="label">Athlete name</label>
-        <input id="name" name="name" required defaultValue={athlete?.name} className="input" />
+        <input id="name" name="name" required defaultValue={v?.name ?? athlete?.name} className="input" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="gradYear" className="label">High school graduation year</label>
-          <select id="gradYear" name="gradYear" required defaultValue={athlete?.gradYear ?? year + 3} className="input">
+          <select id="gradYear" name="gradYear" required defaultValue={v?.gradYear ?? athlete?.gradYear ?? year + 3} className="input">
             {years.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -27,7 +29,7 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
         </div>
         <div>
           <label htmlFor="position" className="label">Primary position</label>
-          <select id="position" name="position" required defaultValue={athlete?.position ?? "OH"} className="input">
+          <select id="position" name="position" required defaultValue={v?.position ?? athlete?.position ?? "OH"} className="input">
             {POSITIONS.map((p) => (
               <option key={p.code} value={p.code}>{p.label}</option>
             ))}
@@ -38,8 +40,10 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
           <input
             id="height"
             name="height"
-            placeholder={`e.g. 6'0"`}
-            defaultValue={athlete?.heightIn ? formatHeight(athlete.heightIn) : ""}
+            placeholder={`e.g. 5'10"`}
+            autoCorrect="off"
+            autoCapitalize="off"
+            defaultValue={v?.height ?? (athlete?.heightIn ? formatHeight(athlete.heightIn) : "")}
             className="input"
           />
         </div>
@@ -51,7 +55,7 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
             inputMode="numeric"
             pattern="\d{5}"
             required
-            defaultValue={athlete?.homeZip}
+            defaultValue={v?.homeZip ?? athlete?.homeZip}
             className="input"
           />
           {athlete?.homeCity && (

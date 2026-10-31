@@ -140,6 +140,16 @@ describe("parseHeight", () => {
     expect(parseHeight("72")).toBe(72);
     expect(parseHeight("tall")).toBeNull();
   });
+
+  it("reads phones' curly quotes and spelled-out units", () => {
+    expect(parseHeight("5\u201910\u201D")).toBe(70);
+    expect(parseHeight("5\u201910\u201D\"")).toBe(70);
+    expect(parseHeight("5\u2032 10\u2033")).toBe(70);
+    expect(parseHeight("5'10''")).toBe(70);
+    expect(parseHeight("5 ft 10 in")).toBe(70);
+    expect(parseHeight("6\u2019")).toBe(72);
+    expect(parseHeight("70 in")).toBe(70);
+  });
 });
 
 describe("programSummary", () => {

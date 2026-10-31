@@ -13,7 +13,8 @@ import { POSITIONS } from "@/lib/positions";
 import { getAthlete } from "@/lib/queries";
 import { isTier } from "@/lib/tiers";
 
-export type FormState = { error?: string; ok?: boolean } | undefined;
+// `values` echoes what was submitted so a form can refill its fields after an error.
+export type FormState = { error?: string; ok?: boolean; values?: Record<string, string> } | undefined;
 
 const credentials = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
@@ -88,13 +89,15 @@ const athleteSchema = z.object({
 
 export async function saveAthlete(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
-  const parsed = athleteSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const submitted = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
+  const fail = (error: string) => ({ error, values: submitted });
+  const parsed = athleteSchema.safeParse(submitted);
+  if (!parsed.success) return fail(parsed.error.issues[0].message);
   const d = parsed.data;
   const heightIn = d.height ? parseHeight(d.height) : null;
-  if (d.height && heightIn == null) return { error: `Couldn't read the height "${d.height}". Try 6'1" or 73.` };
+  if (d.height && heightIn == null) return fail(`Couldn't read the height "${d.height}". Try 5'10" or 70.`);
   const place = lookupZip(d.homeZip);
-  if (!place) return { error: "We couldn't find that ZIP code." };
+  if (!place) return fail("We couldn't find that ZIP code.");
 
   const values = {
     name: d.name,
