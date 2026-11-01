@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CLASS_YEARS, type SchoolAnalysis } from "@/lib/analytics";
+import { CLASS_YEARS, postseasonRank, type SchoolAnalysis } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { POSITIONS, positionLabel } from "@/lib/positions";
 
 type View = "breakdown" | "pipeline" | "grid";
 type Cell = string | number | null;
-type Column = { label: string; title?: string; value: (a: SchoolAnalysis) => Cell; show?: (a: SchoolAnalysis) => React.ReactNode; left?: boolean };
+type Column = {
+  label: string;
+  title?: string;
+  /** What the cell and the Excel download contain. */
+  value: (a: SchoolAnalysis) => Cell;
+  /** Sort key when `value` is formatted text (heights, records); defaults to `value`. */
+  sort?: (a: SchoolAnalysis) => number | string | null;
+  show?: (a: SchoolAnalysis) => React.ReactNode;
+  left?: boolean;
+};
 
 const VIEWS: { key: View; label: string }[] = [
   { key: "breakdown", label: "Roster by position" },
@@ -37,6 +46,8 @@ const record = (w: number | null, l: number | null) => (w == null ? null : `${w}
 export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolAnalysis[]; defaultPosition: string }) {
   const [view, setView] = useState<View>("breakdown");
   const [pos, setPos] = useState(defaultPosition);
+  // Sorted column (by label, so it carries across views that share it) and direction.
+  const [sortBy, setSortBy] = useState<{ label: string; desc: boolean } | null>(null);
   const rows = [...analyses].sort((a, b) => a.name.localeCompare(b.name));
   const classes = rows[0]?.pipeline.classes ?? [];
   const years = [...new Set(rows.flatMap((a) => a.program.seasons.map((s) => s.year)))].sort();
@@ -75,8 +86,16 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
       { label: "Redshirt", value: (a) => noData(a) ?? group(a)?.redshirts ?? 0 },
       { label: `Leaving after ${rows[0]?.rosterSeason ?? ""}`, value: (a) => noData(a) ?? group(a)?.leaving ?? 0 },
       { label: "Hybrids", title: "Listed at more than one position", value: (a) => noData(a) ?? group(a)?.hybrids ?? 0 },
-      { label: `Avg ${pos} height`, value: (a) => (posCovered(a) ? formatHeight(group(a)?.avgHeight) : null) },
-      { label: `Shortest ${pos}`, value: (a) => (posCovered(a) ? formatHeight(group(a)?.shortest?.heightIn) : null) },
+      {
+        label: `Avg ${pos} height`,
+        value: (a) => (posCovered(a) ? formatHeight(group(a)?.avgHeight) : null),
+        sort: (a) => (posCovered(a) ? (group(a)?.avgHeight ?? null) : null),
+      },
+      {
+        label: `Shortest ${pos}`,
+        value: (a) => (posCovered(a) ? formatHeight(group(a)?.shortest?.heightIn) : null),
+        sort: (a) => (posCovered(a) ? (group(a)?.shortest?.heightIn ?? null) : null),
+      },
       { label: "Roster size", value: (a) => a.rosterCount || null },
     ],
     pipeline: [
@@ -92,7 +111,11 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
         title: `Commits who list ${pos} as a second position`,
         value: (a) => noData(a) ?? classes.reduce((n, y) => n + (pipe(a)?.hybridByClass[y] ?? 0), 0),
       },
-      { label: `Avg incoming ${pos} height`, value: (a) => (posCovered(a) ? formatHeight(pipe(a)?.avgHeight) : null) },
+      {
+        label: `Avg incoming ${pos} height`,
+        value: (a) => (posCovered(a) ? formatHeight(pipe(a)?.avgHeight) : null),
+        sort: (a) => (posCovered(a) ? (pipe(a)?.avgHeight ?? null) : null),
+      },
       ...classes.slice(0, 2).map((y): Column => ({
         label: `Other-position commits ${y}`,
         value: (a) => a.pipeline.totalByClass[y] - (pipe(a)?.byClass[y] ?? 0),
@@ -102,6 +125,7 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
       {
         label: "Data completeness",
         value: (a) => (a.commitDataQuality === "good" ? "Good" : "Partial"),
+        sort: (a) => (a.commitDataQuality === "good" ? 1 : 0),
         show: (a) => (a.commitDataQuality === "good" ? "Good" : <span className="text-warn">Partial</span>),
       },
     ],
@@ -118,6 +142,7 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
           const s = a.program.seasons.find((x) => x.year === y);
           return s ? record(s.wins, s.losses) : null;
         },
+        sort: (a) => a.program.seasons.find((x) => x.year === y)?.winPct ?? null,
       })),
       { label: "5-yr W", value: (a) => a.program.wins },
       { label: "5-yr L", value: (a) => a.program.losses },
@@ -126,6 +151,8 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
         label: `${y} NCAA`,
         left: true,
         value: (a) => a.program.seasons.find((x) => x.year === y)?.postseason ?? null,
+        // How far they went, not alphabetical.
+        sort: (a) => postseasonRank(a.program.seasons.find((x) => x.year === y)?.postseason ?? null),
       })),
       { label: "NCAA apps", value: (a) => a.program.postseasonApps },
       { label: "Volleyball APR", value: (a) => a.apr, show: (a) => <span title={a.aprNote ?? undefined}>{a.apr ?? "—"}</span> },
@@ -142,7 +169,7 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
       { label: "Cost of attendance", value: (a) => a.costOfAttendance, show: (a) => formatMoney(a.costOfAttendance) },
       { label: "Admission rate", value: (a) => a.admissionRate, show: (a) => formatPct(a.admissionRate) },
       { label: "Avg SAT", value: (a) => a.satAvg },
-      { label: "ACT range", value: (a) => (a.act25 != null ? `${a.act25}-${a.act75}` : null) },
+      { label: "ACT range", value: (a) => (a.act25 != null ? `${a.act25}-${a.act75}` : null), sort: (a) => a.act25 },
       { label: "Grad rate", value: (a) => a.graduationRate, show: (a) => formatPct(a.graduationRate) },
       { label: "Retention", value: (a) => a.retentionRate, show: (a) => formatPct(a.retentionRate) },
       { label: "Median earnings", value: (a) => a.medianEarnings, show: (a) => formatMoney(a.medianEarnings) },
@@ -151,6 +178,29 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
 
   const cols = columns[view];
   const posPicker = view !== "grid";
+  const sortCol = sortBy ? cols.find((c) => c.label === sortBy.label) : undefined;
+  const key = (c: Column, a: SchoolAnalysis) => {
+    const v = c.sort ? c.sort(a) : c.value(a);
+    return v === "no data" || v === "" ? null : v;
+  };
+  const sorted = sortCol
+    ? [...rows].sort((a, b) => {
+        const va = key(sortCol, a);
+        const vb = key(sortCol, b);
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1; // missing data always last
+        if (vb == null) return -1;
+        const cmp = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb));
+        return sortBy!.desc ? -cmp : cmp;
+      })
+    : rows;
+  // First click: text A→Z, numbers high→low. Clicking again reverses.
+  const toggleSort = (c: Column) =>
+    setSortBy((cur) =>
+      cur?.label === c.label
+        ? { label: c.label, desc: !cur.desc }
+        : { label: c.label, desc: rows.some((a) => typeof key(c, a) === "number") },
+    );
 
   return (
     <section className="space-y-3">
@@ -180,11 +230,12 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
         )}
         <button
           className="btn-secondary ml-auto"
-          onClick={() => downloadCsv(`vbelite-${view}${posPicker ? `-${pos}` : ""}.csv`, cols, rows)}
+          onClick={() => downloadCsv(`vbelite-${view}${posPicker ? `-${pos}` : ""}.csv`, cols, sorted)}
         >
           Download for Excel
         </button>
       </div>
+      <p className="text-xs text-ink-3">Click any column heading to sort; click again to reverse. Downloads keep your sort order.</p>
       {view === "pipeline" && (
         <p className="text-sm text-ink-2">
           {positionLabel(pos)} commits in the next three classes. Green marks the school with the fewest incoming
@@ -202,19 +253,26 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
         <table className="w-full text-sm">
           <thead className="border-b border-line text-xs text-ink-3">
             <tr>
-              {cols.map((c, i) => (
-                <th
-                  key={c.label}
-                  title={c.title}
-                  className={`whitespace-nowrap px-3 py-2 font-medium ${c.left ? "text-left" : "text-right"} ${i === 0 ? "sticky left-0 z-10 bg-surface" : ""}`}
-                >
-                  {c.label}
-                </th>
-              ))}
+              {cols.map((c, i) => {
+                const active = sortCol?.label === c.label;
+                return (
+                  <th
+                    key={c.label}
+                    title={c.title}
+                    aria-sort={active ? (sortBy!.desc ? "descending" : "ascending") : "none"}
+                    className={`whitespace-nowrap px-3 py-2 font-medium ${c.left ? "text-left" : "text-right"} ${i === 0 ? "sticky left-0 z-10 bg-surface" : ""}`}
+                  >
+                    <button onClick={() => toggleSort(c)} className={`hover:text-ink ${active ? "text-ink" : ""}`}>
+                      {c.label}
+                      {active ? (sortBy!.desc ? " ↓" : " ↑") : ""}
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((a) => (
+            {sorted.map((a) => (
               <tr key={a.id} className="border-b border-line last:border-0">
                 {cols.map((c, i) => {
                   const v = c.value(a);
