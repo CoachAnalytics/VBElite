@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   {
+    href: "/recommendations",
+    label: "For you",
+    icon: <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6-4.5-4.2 6.1-.7z" />,
+  },
+  {
     href: "/compare",
     label: "Compare",
     icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,

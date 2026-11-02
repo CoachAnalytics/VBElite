@@ -52,14 +52,15 @@ function subscribeWeights(cb: () => void) {
   };
 }
 
-function useWeights(): Weights {
+/** Weights the family set on this device, else the questionnaire's, else the built-in defaults. */
+function useWeights(defaults: Weights): Weights {
   const raw = useSyncExternalStore(subscribeWeights, readWeightsRaw, () => null);
   return useMemo(() => {
     try {
-      if (raw) return { ...DEFAULT_WEIGHTS, ...JSON.parse(raw) };
+      if (raw) return { ...defaults, ...JSON.parse(raw) };
     } catch {}
-    return DEFAULT_WEIGHTS;
-  }, [raw]);
+    return defaults;
+  }, [raw, defaults]);
 }
 
 export function CompareDashboard({
@@ -67,13 +68,16 @@ export function CompareDashboard({
   athleteName,
   position,
   gradYear,
+  defaultWeights = DEFAULT_WEIGHTS,
 }: {
   analyses: Row[];
   athleteName: string;
   position: string;
   gradYear: number;
+  /** Starting weights from the questionnaire's priorities. */
+  defaultWeights?: Weights;
 }) {
-  const weights = useWeights();
+  const weights = useWeights(defaultWeights);
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: "score", desc: true });
 

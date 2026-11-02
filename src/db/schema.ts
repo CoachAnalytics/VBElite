@@ -154,6 +154,9 @@ export const athletes = pgTable("athletes", {
   homeState: text("home_state"),
   latitude: real("latitude"),
   longitude: real("longitude"),
+  // Starting-point questionnaire answers (JSON, see src/lib/questionnaire.ts); private to the account.
+  questionnaire: text("questionnaire"),
+  questionnaireAt: timestamp("questionnaire_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

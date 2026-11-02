@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { toggleSchool } from "../actions";
-import { requireUser } from "@/lib/auth";
 import { costFor, distanceFor, pipelineClasses, programSummary } from "@/lib/analytics";
 import { formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, filterOptions, getAthlete, getSavedSchools, listSchools, positionCounts } from "@/lib/queries";
+import { athleteInput, filterOptions, getSavedSchools, listSchools, positionCounts, requireOnboarded } from "@/lib/queries";
 
 const SORTS = {
   name: "Name",
@@ -22,8 +21,7 @@ type SortKey = keyof typeof SORTS;
 const ASCENDING: SortKey[] = ["distance", "room", "cost", "smallest"];
 
 export default async function SchoolsPage({ searchParams }: PageProps<"/schools">) {
-  const user = await requireUser();
-  const athlete = await getAthlete(user.id);
+  const { athlete } = await requireOnboarded();
   const sp = await searchParams;
   const one = (k: string) => (typeof sp[k] === "string" && sp[k] ? (sp[k] as string) : undefined);
   const filters = { q: one("q"), state: one("state"), conference: one("conference"), control: one("control") };

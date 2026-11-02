@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
 import { analyzeSchool } from "@/lib/analytics";
 import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, getAthlete, getSavedSchools, getSchoolBundles } from "@/lib/queries";
+import { athleteInput, getSavedSchools, getSchoolBundles, requireOnboarded } from "@/lib/queries";
+import { parseAnswers } from "@/lib/questionnaire";
+import { weightsFromAnswers } from "@/lib/recommend";
 import { CompareDashboard } from "@/components/CompareDashboard";
 import { CompareTables } from "@/components/CompareTables";
 
 export default async function ComparePage() {
-  const user = await requireUser();
-  const athlete = await getAthlete(user.id);
-  if (!athlete) redirect("/profile");
+  const { athlete } = await requireOnboarded();
+  const answers = parseAnswers(athlete.questionnaire);
 
   const saved = await getSavedSchools(athlete.id);
   const bundles = await getSchoolBundles(saved.map((s) => s.schoolId));
@@ -34,11 +33,20 @@ export default async function ComparePage() {
       {analyses.length === 0 ? (
         <div className="card p-8 text-center">
           <p className="text-ink-2">Your list is empty.</p>
-          <Link href="/schools" className="btn-primary mt-4">Choose schools</Link>
+          <div className="mt-4 flex justify-center gap-3">
+            <Link href="/recommendations" className="btn-primary">See recommended schools</Link>
+            <Link href="/schools" className="btn-secondary">Browse all schools</Link>
+          </div>
         </div>
       ) : (
         <>
-          <CompareDashboard analyses={analyses} athleteName={athlete.name} position={athlete.position} gradYear={athlete.gradYear} />
+          <CompareDashboard
+            analyses={analyses}
+            athleteName={athlete.name}
+            position={athlete.position}
+            gradYear={athlete.gradYear}
+            defaultWeights={answers ? weightsFromAnswers(answers) : undefined}
+          />
           <div>
             <h2 className="text-xl font-semibold">Side by side</h2>
             <p className="mt-1 text-sm text-ink-2">

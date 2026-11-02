@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { createSession, destroySession, requireUser } from "@/lib/auth";
 import { parseHeight } from "@/lib/format";
+import { answersSchema, STEPS } from "@/lib/questionnaire";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { POSITIONS } from "@/lib/positions";
@@ -125,7 +126,8 @@ export async function saveAthlete(_: FormState, form: FormData): Promise<FormSta
     await db.insert(schema.athletes).values({ ...values, userId: user.id });
   }
   revalidatePath("/", "layout");
-  if (!existing) redirect("/schools");
+  // New athletes continue to the starting-point questionnaire.
+  if (!existing) redirect("/questionnaire");
   return { ok: true };
 }
 
@@ -160,4 +162,50 @@ export async function setTier(form: FormData) {
     .set({ tier })
     .where(and(eq(schema.savedSchools.athleteId, athlete.id), eq(schema.savedSchools.schoolId, schoolId)));
   revalidatePath("/compare");
+}
+
+/** Saves the starting-point questionnaire (sent as one JSON field) and shows the recommendations. */
+export async function saveQuestionnaire(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const athlete = await getAthlete(user.id);
+  if (!athlete) redirect("/profile");
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(form.get("answers") ?? ""));
+  } catch {
+    return { error: "Something went wrong reading your answers. Please try again." };
+  }
+  const parsed = answersSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: `Please check "${questionLabel(String(issue.path[0]))}": ${issue.message}` };
+  }
+  await db
+    .update(schema.athletes)
+    .set({ questionnaire: JSON.stringify(parsed.data), questionnaireAt: new Date() })
+    .where(eq(schema.athletes.id, athlete.id));
+  revalidatePath("/", "layout");
+  redirect("/recommendations");
+}
+
+function questionLabel(id: string) {
+  return STEPS.flatMap((s) => s.questions).find((q) => q.id === id)?.label ?? id;
+}
+
+const RECOMMENDED_TIER: Record<string, string> = { reach: "reach", target: "main", likely: "expand" };
+
+/** Adds recommended schools to the athlete's list (already-saved schools keep their list). */
+export async function addRecommended(form: FormData) {
+  const athlete = await requireAthlete();
+  const picks = form
+    .getAll("pick")
+    .map((v) => String(v).split(":"))
+    .map(([id, tier]) => ({ schoolId: Number(id), tier: RECOMMENDED_TIER[tier] ?? "main" }))
+    .filter((p) => Number.isInteger(p.schoolId));
+  if (!picks.length) return;
+  await db
+    .insert(schema.savedSchools)
+    .values(picks.map((p) => ({ athleteId: athlete.id, schoolId: p.schoolId, tier: p.tier })))
+    .onConflictDoNothing();
+  revalidatePath("/", "layout");
 }

@@ -51,6 +51,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             {user ? (
               <>
+                <Link href="/recommendations" className="hidden text-ink-2 hover:text-ink sm:inline">For you</Link>
                 <Link href="/compare" className="hidden text-ink-2 hover:text-ink sm:inline">Compare</Link>
                 <Link href="/schools" className="hidden text-ink-2 hover:text-ink sm:inline">Schools</Link>
                 <Link href="/profile" className="hidden text-ink-2 hover:text-ink sm:inline">Athlete profile</Link>

@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { toggleSchool } from "../../actions";
-import { requireUser } from "@/lib/auth";
 import { analyzeSchool, pipelineClasses, positionTimeline, programSummary, recruitingPipeline, rosterBreakdown } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, getAthlete, getSavedSchools, getSchoolBundleBySlug } from "@/lib/queries";
+import { athleteInput, getSavedSchools, getSchoolBundleBySlug, requireOnboarded } from "@/lib/queries";
 import { PositionTimelineChart, WinPctChart } from "@/components/SchoolCharts";
 import { PipelineTable, RosterBreakdownTable } from "@/components/BreakdownTables";
 
@@ -23,8 +22,8 @@ const CLASS_ORDER = ["Fr", "So", "Jr", "Sr", "Grad"];
 
 export default async function SchoolPage({ params }: PageProps<"/schools/[slug]">) {
   const { slug } = await params;
-  const user = await requireUser();
-  const [bundle, athlete] = await Promise.all([getSchoolBundleBySlug(slug), getAthlete(user.id)]);
+  const { athlete } = await requireOnboarded();
+  const bundle = await getSchoolBundleBySlug(slug);
   if (!bundle) notFound();
   const { school } = bundle;
   const input = athlete ? athleteInput(athlete) : null;

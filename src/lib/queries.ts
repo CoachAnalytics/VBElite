@@ -1,7 +1,10 @@
 import "server-only";
 import { and, asc, count, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
-import type { AthleteInput, SchoolBundle } from "./analytics";
+import { redirect } from "next/navigation";
+import { programSummary, type AthleteInput, type SchoolBundle } from "./analytics";
+import { requireUser } from "./auth";
+import type { SchoolInfo } from "./recommend";
 import type { Athlete } from "@/db/schema";
 
 export async function getAthlete(userId: number): Promise<Athlete | null> {
@@ -104,4 +107,65 @@ export async function positionCounts(position: string, from: number, to: number)
     roster: new Map(roster.map((r) => [r.schoolId, r.n])),
     incoming: new Map(commits.map((r) => [r.schoolId, r.n])),
   };
+}
+
+/**
+ * Every school summarized for the recommender, plus heights of players at `position`
+ * (for the level benchmarks). Commits counted are those at the position in the classes
+ * ahead of and with the athlete.
+ */
+export async function getRecommendationData(position: string, gradYear: number) {
+  const [schools, seasons, players, commits] = await Promise.all([
+    db.select().from(schema.schools),
+    db.select().from(schema.seasons),
+    db
+      .select({ schoolId: schema.rosterPlayers.schoolId, heightIn: schema.rosterPlayers.heightIn })
+      .from(schema.rosterPlayers)
+      .where(eq(schema.rosterPlayers.primaryPosition, position)),
+    db
+      .select({ schoolId: schema.commits.schoolId, n: count() })
+      .from(schema.commits)
+      .where(
+        and(
+          eq(schema.commits.primaryPosition, position),
+          gte(schema.commits.gradYear, gradYear - 3),
+          lte(schema.commits.gradYear, gradYear),
+        ),
+      )
+      .groupBy(schema.commits.schoolId),
+  ]);
+  const incoming = new Map(commits.map((c) => [c.schoolId, c.n]));
+  const infos: SchoolInfo[] = schools.map((s) => ({
+    id: s.id,
+    slug: s.slug,
+    name: s.name,
+    conference: s.conference,
+    city: s.city,
+    state: s.state,
+    control: s.control,
+    enrollment: s.enrollment,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    admissionRate: s.admissionRate,
+    satAvg: s.satAvg,
+    tuitionInState: s.tuitionInState,
+    tuitionOutState: s.tuitionOutState,
+    avgNetPrice: s.avgNetPrice,
+    program: programSummary(seasons.filter((x) => x.schoolId === s.id)),
+    positionCovered: s.positionsCovered.split(",").includes(position),
+    incomingAtPosition: incoming.get(s.id) ?? 0,
+  }));
+  return { schools: infos, players };
+}
+
+/**
+ * The signed-in user's athlete, sending them to the next onboarding step first:
+ * the profile, then the starting-point questionnaire (required for everyone).
+ */
+export async function requireOnboarded() {
+  const user = await requireUser();
+  const athlete = await getAthlete(user.id);
+  if (!athlete) redirect("/profile");
+  if (!athlete.questionnaireAt) redirect("/questionnaire");
+  return { user, athlete };
 }
