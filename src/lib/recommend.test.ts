@@ -190,3 +190,22 @@ describe("weightsFromAnswers", () => {
     expect(w.distance).toBe(4);
   });
 });
+
+describe("estimateLevel with projected measurables", () => {
+  it("uses projected height and approach touch, and says so", async () => {
+    const { estimateLevel } = await import("./recommend");
+    const answers = {
+      standingReach: null, approachTouch: null, blockTouch: null, hand: "right", secondPosition: "", clubDivision: "usa",
+      clubFinish: "qualifier", clubRole: "starter", hsRole: "varsity", yearsClub: "4-5", coachProjection: "mid", contact: "none",
+      video: "", gpa: "3.5", sat: null, wantPlayingTime: "2", wantWinning: "2", wantAcademics: "2", wantCost: "2",
+      maxDistance: "any", regions: [], size: "any", control: "any",
+    } as unknown as Parameters<typeof estimateLevel>[0];
+    const basics = { position: "MB", heightIn: 72, homeState: "OH", latitude: null, longitude: null };
+    const bench = { low: 72.8, mid: 73.5, high: 74.5 };
+    const without = estimateLevel(answers, basics, bench);
+    const withProj = estimateLevel(answers, basics, bench, null, null, { heightIn: 74.5, approachIn: 121, approachBenchmarks: { low: 115, mid: 116, high: 117 } });
+    expect(withProj.level).toBeGreaterThan(without.level);
+    expect(withProj.drivers.join(" ")).toMatch(/projected height at 18/);
+    expect(withProj.drivers.join(" ")).toMatch(/projected approach touch is in the range of top D1 programs \(VB Elite estimate\)/);
+  });
+});

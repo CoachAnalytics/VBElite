@@ -16,7 +16,8 @@ const ordinal = (n: number) => {
   const s = r % 100 >= 11 && r % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[r % 10] ?? "th";
   return `${r}${s}`;
 };
-const pctText = (p: number) => (p >= 99.5 ? "top 1%" : p < 1 ? "below 1st" : ordinal(Math.min(99, p)));
+/** "82nd percentile", "Top 1%", "Below the 1st percentile" */
+const pctText = (p: number) => (p >= 99 ? "Top 1%" : p < 1 ? "Below the 1st percentile" : `${ordinal(p)} percentile`);
 
 export type CollegeBand = { label: string; values: Record<MetricKey, number> };
 
@@ -91,7 +92,7 @@ export function MeasurablesCard({
                   </td>
                   <td className="py-2 pr-3">
                     <span className="font-medium">{pctText(v.elitePct)}</span>
-                    <span className="text-ink-3"> percentile of elite {pos}s</span>
+                    <span className="text-ink-3"> of elite {pos}s</span>
                     {v.cdcPct != null && (
                       <div className="text-xs text-ink-3">Taller than {v.cdcPct >= 99.5 ? "99%+" : `${Math.round(v.cdcPct)}%`} of U.S. girls her age</div>
                     )}

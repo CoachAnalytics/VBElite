@@ -221,7 +221,7 @@ export function estimateLevel(
     );
   }
   if (touch != null) {
-    drivers.push(`Her projected approach touch fits ${levelPhrase(touch)} programs (VB Elite estimate).`);
+    drivers.push(`Her projected approach touch is in the range of ${levelPhrase(touch)} (VB Elite estimate).`);
   }
   return {
     level,
