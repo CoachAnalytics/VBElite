@@ -89,6 +89,17 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
             {school.control && ` · ${school.control}`}
             {school.enrollment && ` · ${school.enrollment.toLocaleString()} students`}
           </p>
+          <p className="mt-1 text-sm">
+            <span className="text-ink-3">Offense: </span>
+            {school.offenseSystem ? (
+              <a href="#offense" className="font-medium text-accent-ink underline">
+                {school.offenseSystem === "mixed" ? "5-1 and 6-2" : school.offenseSystem} ({school.offenseSeason}
+                {school.offenseConfidence === "likely" ? ", likely" : ""})
+              </a>
+            ) : (
+              <span className="text-ink-3">5-1 or 6-2 not found yet</span>
+            )}
+          </p>
         </div>
         {athlete && (
           <form action={toggleSchool}>
@@ -148,7 +159,7 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
       </section>
 
       {school.offenseSystem && (
-        <section className="card flex flex-wrap items-start gap-x-4 gap-y-1 p-4 text-sm">
+        <section id="offense" className="card flex scroll-mt-20 flex-wrap items-start gap-x-4 gap-y-1 p-4 text-sm">
           <div className="shrink-0">
             <div className="text-xs text-ink-3">Offense ({school.offenseSeason})</div>
             <div className="text-xl font-semibold">{school.offenseSystem === "mixed" ? "5-1 and 6-2" : school.offenseSystem}</div>

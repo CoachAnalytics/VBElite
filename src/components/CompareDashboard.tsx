@@ -206,6 +206,14 @@ export function CompareDashboard({
                     <div className="text-xs text-ink-3">{a.division} · {a.conference}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <TierSelect schoolId={a.id} tier={a.tier} label={`List for ${a.name}`} />
+                      {a.offenseSystem && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.offenseSystem === "6-2" ? "bg-good/15 text-good" : "border border-line text-ink-2"}`}
+                          title={`Offense in ${a.offenseSeason}${a.offenseConfidence === "likely" ? " (likely)" : ""}`}
+                        >
+                          {a.offenseSystem === "mixed" ? "5-1/6-2" : a.offenseSystem}
+                        </span>
+                      )}
                       <Link
                         href={`/recruiting#${a.slug}`}
                         className={`rounded-full px-2 py-0.5 text-xs hover:underline ${a.recruiting && a.recruiting.stage >= 4 ? "bg-good/15 text-good" : a.recruiting && a.recruiting.stage >= 2 ? "bg-accent/10 text-accent-ink" : "border border-line text-ink-3"}`}
