@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getAthlete } from "@/lib/queries";
 import { parseAnswers, QUESTION_COUNT } from "@/lib/questionnaire";
-import { Questionnaire } from "@/components/Questionnaire";
+import { QuestionnaireLoader } from "@/components/QuestionnaireLoader";
 
 export default async function QuestionnairePage() {
   const user = await requireUser();
@@ -19,7 +19,7 @@ export default async function QuestionnairePage() {
           {retake && " Change anything that's changed; your recommendations update when you finish."}
         </p>
       </div>
-      <Questionnaire initial={parseAnswers(athlete.questionnaire)} />
+      <QuestionnaireLoader initial={parseAnswers(athlete.questionnaire)} athleteId={athlete.id} />
     </div>
   );
 }
