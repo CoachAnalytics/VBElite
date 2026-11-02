@@ -3,7 +3,7 @@ import { addRecommended } from "../actions";
 import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { parseAnswers } from "@/lib/questionnaire";
-import { estimateLevel, heightBenchmarks, levelLabel, programLevels, recommend, type Tier } from "@/lib/recommend";
+import { estimateLevel, heightBenchmarks, levelPhrase, programLevels, recommend, type Tier } from "@/lib/recommend";
 import { getRecommendationData, getSavedSchools, requireOnboarded } from "@/lib/queries";
 
 const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
@@ -52,7 +52,11 @@ export default async function RecommendationsPage() {
           <div className="text-xs uppercase tracking-wide text-ink-3">Estimated level</div>
           <div className="text-2xl font-semibold">{estimate.label}</div>
           <p className="text-sm text-ink-2">
-            Range: {levelLabel(estimate.low).toLowerCase()} to {levelLabel(estimate.high).toLowerCase()}.
+            Range:{" "}
+            {levelPhrase(estimate.low) === levelPhrase(estimate.high)
+              ? levelPhrase(estimate.low)
+              : `${levelPhrase(estimate.low)} to ${levelPhrase(estimate.high)}`}
+            .
           </p>
           <ul className="list-disc space-y-1 pl-5 text-sm text-ink-2">
             {estimate.drivers.map((d) => <li key={d}>{d}</li>)}

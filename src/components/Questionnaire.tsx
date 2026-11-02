@@ -52,7 +52,10 @@ export function Questionnaire({ initial }: { initial: Answers | null }) {
   const [error, setError] = useState<string | null>(null);
   const current = STEPS[step];
   const last = step === STEPS.length - 1;
-  const set = (id: string, value: string | string[]) => setDraft((d) => ({ ...d, [id]: value }));
+  const set = (id: string, value: string | string[]) => {
+    setDraft((d) => ({ ...d, [id]: value }));
+    setError(null);
+  };
 
   const next = () => {
     const check = toAnswers(draft, current.questions);

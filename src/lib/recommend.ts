@@ -2,7 +2,8 @@
  * Starting-point recommendations from the questionnaire. Pure functions: the page
  * loads every school's summary and passes it in.
  *
- * Levels share one scale: 1 = lower-conference D1, 2 = mid-major, 3 = top D1.
+ * Levels share one scale from 1 (weakest D1 program) to 3 (strongest). Bands: top D1
+ * from 2.7 (about the top 50 programs), mid-level from 1.9, lower conferences below.
  * A school's level is its program-strength percentile among D1 programs; an
  * athlete's level is an estimate from the coach's projection, club results and
  * role, and her height against players at her position at each level.
@@ -48,24 +49,45 @@ export type AthleteBasics = {
 
 // ---------- Program level ----------
 
-function programStrength(s: SchoolInfo): number | null {
+/** NCAA tournament success, 0–1: how often they made it and how far they went. */
+function ncaaScore(s: SchoolInfo): number {
   const p = s.program;
-  if (p.winPct == null) return null;
   const best = Math.max(0, ...p.seasons.map((x) => postseasonRank(x.postseason) ?? 0));
   const apps = p.seasonsTracked ? p.postseasonApps / p.seasonsTracked : 0;
-  const power = POWER_CONFERENCES.includes(s.conference ?? "") ? 0.1 : 0;
-  return 0.55 * p.winPct + 0.25 * apps + 0.2 * (best / 7) + power;
+  return 0.5 * apps + 0.5 * (best / 7);
 }
 
-/** Each school's level from 1 (weakest D1 program) to 3 (strongest), by percentile. */
+/**
+ * Each school's level from 1 (weakest D1 program) to 3 (strongest), by percentile of a
+ * composite: the strength of its conference (its members' NCAA tournament success), its
+ * own tournament success, and its win %. Conference strength keeps a team that wins a
+ * weak league from ranking above a .500 team in the SEC or Big Ten.
+ */
 export function programLevels(schools: SchoolInfo[]): Map<number, number> {
+  const byConference = new Map<string, number[]>();
+  for (const s of schools) {
+    const key = s.conference ?? "";
+    byConference.set(key, [...(byConference.get(key) ?? []), ncaaScore(s)]);
+  }
+  const confStrength = (s: SchoolInfo) => {
+    const xs = byConference.get(s.conference ?? "") ?? [];
+    return xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+  };
+  const maxConf = Math.max(...schools.map(confStrength), 0.01);
   const scored = schools
-    .map((s) => ({ id: s.id, v: programStrength(s) }))
-    .filter((x): x is { id: number; v: number } => x.v != null)
+    .filter((s) => s.program.winPct != null)
+    .map((s) => {
+      const power = POWER_CONFERENCES.includes(s.conference ?? "") ? 0.05 : 0;
+      const v = 0.45 * (confStrength(s) / maxConf) + 0.3 * ncaaScore(s) + 0.25 * s.program.winPct! + power;
+      return { id: s.id, v };
+    })
     .sort((a, b) => a.v - b.v);
   const n = scored.length;
   return new Map(scored.map((x, i) => [x.id, 1 + (2 * i) / Math.max(1, n - 1)]));
 }
+
+const TOP_HIGH = 2.7;
+const TOP_MID = 1.9;
 
 export type HeightBenchmarks = { low: number | null; mid: number | null; high: number | null };
 
@@ -80,13 +102,13 @@ export function heightBenchmarks(
       .map((p) => p.heightIn!);
     return hs.length >= 5 ? hs.reduce((a, b) => a + b, 0) / hs.length : null;
   };
-  return { low: bucket(1, 1.67), mid: bucket(1.67, 2.34), high: bucket(2.34, 3.01) };
+  return { low: bucket(1, TOP_MID), mid: bucket(TOP_MID, TOP_HIGH), high: bucket(TOP_HIGH, 3.01) };
 }
 
 // ---------- Athlete level ----------
 
-const COACH: Record<string, number | null> = { high: 3, mid: 2.2, low: 1.4, d2: 0.6, d3: 0.2, unknown: null };
-const DIVISION: Record<string, number> = { open: 2.6, usa: 2, american: 1.5, regional: 0.9, none: 0.4 };
+const COACH: Record<string, number | null> = { high: 2.85, mid: 2.3, low: 1.45, d2: 0.6, d3: 0.2, unknown: null };
+const DIVISION: Record<string, number> = { open: 2.5, usa: 2, american: 1.5, regional: 0.9, none: 0.4 };
 const FINISH: Record<string, number> = { medal: 0.4, nationals: 0.2, qualifier: 0, regional: -0.1, none: -0.2 };
 const ROLE: Record<string, number> = { "starter-all": 0.2, starter: 0.1, rotation: -0.1, developing: -0.3 };
 const HS: Record<string, number> = { "varsity-starter": 0.1, varsity: 0, jv: -0.2, none: 0 };
@@ -94,13 +116,15 @@ const CONTACT: Record<string, number> = { offers: 0.3, talks: 0.15, camps: 0, no
 
 const clamp = (x: number, lo = 0, hi = 3) => Math.min(hi, Math.max(lo, x));
 
-/** Where her height falls against players at her position: 1 = lower-D1 average, 3 = top-D1 average. */
+/** Where her height falls against players at her position, on the program-level scale. */
 function heightLevel(height: number | null, b: HeightBenchmarks): number | null {
   if (height == null || b.low == null || b.mid == null || b.high == null) return null;
-  if (height >= b.high) return clamp(3 + (height - b.high) / 4);
-  if (height >= b.mid) return 2 + (height - b.mid) / Math.max(0.5, b.high - b.mid);
-  if (height >= b.low) return 1 + (height - b.low) / Math.max(0.5, b.mid - b.low);
-  return clamp(1 - (b.low - height) / 3);
+  // Each benchmark is the average for its band; place them at the band middles.
+  const [lo, mid, hi] = [1.45, 2.3, 2.85];
+  if (height >= b.high) return clamp(hi + (height - b.high) / 4);
+  if (height >= b.mid) return mid + ((hi - mid) * (height - b.mid)) / Math.max(0.5, b.high - b.mid);
+  if (height >= b.low) return lo + ((mid - lo) * (height - b.low)) / Math.max(0.5, b.mid - b.low);
+  return clamp(lo - (b.low - height) / 3);
 }
 
 export type LevelEstimate = {
@@ -115,10 +139,16 @@ export type LevelEstimate = {
 };
 
 export function levelLabel(level: number): string {
-  if (level >= 2.4) return "Top D1 (Power conferences)";
-  if (level >= 1.7) return "Mid-level D1";
-  if (level >= 1.0) return "D1, lower conferences";
+  if (level >= TOP_HIGH) return "Top D1 programs";
+  if (level >= TOP_MID) return "Mid-level D1";
+  if (level >= 1.0) return "Lower-conference D1";
   return "D2, D3 or NAIA";
+}
+
+/** The label for use mid-sentence ("mid-level D1"), keeping D1/D2/D3/NAIA capitalized. */
+export function levelPhrase(level: number): string {
+  const label = levelLabel(level);
+  return label.startsWith("D") ? label : label[0].toLowerCase() + label.slice(1);
 }
 
 export function estimateLevel(a: Answers, athlete: AthleteBasics, benchmarks: HeightBenchmarks): LevelEstimate {
@@ -140,11 +170,11 @@ export function estimateLevel(a: Answers, athlete: AthleteBasics, benchmarks: He
   const spread = coach != null ? 0.35 : 0.55;
 
   const drivers: string[] = [];
-  if (coach != null) drivers.push(`Her coach projects her at: ${levelLabel(coach).toLowerCase()}.`);
+  if (coach != null) drivers.push(`Her coach projects her at ${levelPhrase(coach)}.`);
   else drivers.push("No coach projection yet, so the range is wider. Ask her club coach and retake this.");
-  drivers.push(`Club and playing role point to: ${levelLabel(club).toLowerCase()}.`);
+  drivers.push(`Her club level and playing role point to ${levelPhrase(club)}.`);
   if (height != null) {
-    drivers.push(`Her height is typical of ${levelLabel(height).toLowerCase()} players at her position.`);
+    drivers.push(`Her height is typical of ${levelPhrase(height)} players at her position.`);
   }
   return { level, low: clamp(level - spread), high: clamp(level + spread), label: levelLabel(level), drivers, belowD1: level < 1 };
 }

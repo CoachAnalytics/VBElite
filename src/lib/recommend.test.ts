@@ -113,7 +113,7 @@ describe("heightBenchmarks", () => {
 describe("estimateLevel", () => {
   it("leans on the coach's projection", () => {
     const top = estimateLevel(answers({ coachProjection: "high", clubDivision: "open", clubFinish: "medal" }), athlete, noHeights);
-    expect(top.label).toBe("Top D1 (Power conferences)");
+    expect(top.label).toBe("Top D1 programs");
     const low = estimateLevel(answers({ coachProjection: "d3", clubDivision: "regional", clubRole: "developing" }), athlete, noHeights);
     expect(low.belowD1).toBe(true);
   });

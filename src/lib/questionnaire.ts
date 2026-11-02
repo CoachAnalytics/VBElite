@@ -134,9 +134,9 @@ export const STEPS: Step[] = [
         help: "Ask them directly. It's the most useful answer in this questionnaire.",
         kind: "choice",
         options: [
-          { value: "high", label: "Top D1 (Power conferences)" },
+          { value: "high", label: "Top D1 (Power conferences, top-25 programs)" },
           { value: "mid", label: "Mid-level D1" },
-          { value: "low", label: "D1, lower conferences" },
+          { value: "low", label: "Lower-conference D1" },
           { value: "d2", label: "D2" },
           { value: "d3", label: "D3 or NAIA" },
           { value: "unknown", label: "We haven't asked yet" },
