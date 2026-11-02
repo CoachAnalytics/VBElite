@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveQuestionnaire } from "@/app/actions";
-import { formatHeight, parseHeight } from "@/lib/format";
+import { formatHeight, parseHeight, REACH_RANGE } from "@/lib/format";
 import { STEPS, type Answers, type Question } from "@/lib/questionnaire";
 
 type Draft = Record<string, string | string[]>;
@@ -31,8 +31,8 @@ function toAnswers(d: Draft, questions: Question[]): { answers?: Record<string, 
     const text = String(v ?? "").trim();
     if (!text && !q.optional && q.kind !== "text") return { error: `Please answer "${q.label}".` };
     if (q.kind === "height") {
-      const inches = text ? parseHeight(text) : null;
-      if (text && inches == null) return { error: `Couldn't read "${text}" for ${q.label.toLowerCase()}. Try 9'10" or 118.` };
+      const inches = text ? parseHeight(text, REACH_RANGE) : null;
+      if (text && inches == null) return { error: `Couldn't read "${text}" for ${q.label.toLowerCase()}. Try 9'10" or 118 (inches).` };
       out[q.id] = inches;
     } else if (q.kind === "number") {
       const n = text ? Number(text) : null;

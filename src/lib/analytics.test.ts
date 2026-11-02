@@ -16,7 +16,7 @@ import {
   type SchoolBundle,
 } from "./analytics";
 import { normalizePositions } from "./positions";
-import { parseHeight } from "./format";
+import { parseHeight, REACH_RANGE } from "./format";
 
 const school = (over: Partial<School> = {}): School => ({
   id: 1,
@@ -149,6 +149,21 @@ describe("parseHeight", () => {
     expect(parseHeight("5 ft 10 in")).toBe(70);
     expect(parseHeight("6\u2019")).toBe(72);
     expect(parseHeight("70 in")).toBe(70);
+  });
+
+  it("reads reach and touch heights in feet or inches", () => {
+    const r = REACH_RANGE;
+    for (const v of [`9'3"`, "9\u20193\u201D", "9\u20323\u2033", "9' 3\"", "9 ft 3 in", "9-3", "9 3", "111", `111"`, "111 in", "9\u02BC3\u02BA", "9'3''"]) {
+      expect(parseHeight(v, r), v).toBe(111);
+    }
+    expect(parseHeight(`88"`, r)).toBe(88);
+    expect(parseHeight("88", r)).toBe(88);
+    expect(parseHeight("7\u20198\u201D", r)).toBe(92);
+    expect(parseHeight("10'", r)).toBe(120);
+    expect(parseHeight("9'13\"", r)).toBeNull();
+    expect(parseHeight("200", r)).toBeNull();
+    // A player's height still rejects reach-sized numbers.
+    expect(parseHeight("111")).toBeNull();
   });
 });
 
