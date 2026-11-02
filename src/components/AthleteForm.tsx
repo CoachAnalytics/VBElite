@@ -89,7 +89,6 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
         <input
           id="maxprepsUrl"
           name="maxprepsUrl"
-          type="url"
           inputMode="url"
           autoCapitalize="off"
           autoCorrect="off"
