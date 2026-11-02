@@ -13,4 +13,6 @@ done
 [ -e data/raw/research ] || ln -s "$DATA/research" data/raw/research
 mkdir -p "$DATA/contacts"
 [ -e data/raw/contacts ] || ln -s "$DATA/contacts" data/raw/contacts
+mkdir -p "$DATA/systems"
+[ -e data/raw/systems ] || ln -s "$DATA/systems" data/raw/systems
 echo "data/raw linked to $DATA"

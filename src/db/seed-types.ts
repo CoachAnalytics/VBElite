@@ -91,4 +91,12 @@ export type SchoolSeed = {
   recruitingQuestionnaire?: string | null;
   contactsCheckedAt?: string | null;
   contactsSource?: string | null;
+  /** Absent in older seeds: the school's offense fields are then left as they are. */
+  offense?: {
+    system: "5-1" | "6-2" | "mixed" | null;
+    confidence: "confirmed" | "likely" | null;
+    season: number | null;
+    evidence: string | null;
+    source: string | null;
+  };
 };

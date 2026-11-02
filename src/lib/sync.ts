@@ -47,9 +47,9 @@ async function github(path: string, accept: string) {
 
 /**
  * Bump when the importer starts reading new fields, so files already imported by older code
- * are imported again (e.g. 2 = coach contacts). Stored with the file's SHA.
+ * are imported again (2 = coach contacts, 3 = offensive systems). Stored with the file's SHA.
  */
-const IMPORT_VERSION = 2;
+const IMPORT_VERSION = 3;
 
 export async function syncFromDataRepo(trigger: "schedule" | "manual"): Promise<SyncResult> {
   const log = (r: SyncResult, sha: string | null = null) =>

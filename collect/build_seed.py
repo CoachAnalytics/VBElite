@@ -256,6 +256,37 @@ def load_contacts():
     return out
 
 
+def load_systems():
+    """5-1 / 6-2 research per school (systems/<ncaaOrgId>.json, see collect/SYSTEMS.md)."""
+    out = {}
+    folder = RAW / "systems"
+    if not folder.exists():
+        return out
+    for p in sorted(folder.glob("*.json")):
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"SKIP systems/{p.name}: invalid JSON ({e})")
+            continue
+        out[str(r.get("ncaaOrgId") or p.stem)] = r
+    return out
+
+
+def system_fields(r):
+    if not r:
+        return {}
+    url = r.get("sourceUrl")
+    return {
+        "offense": {
+            "system": r.get("system"),
+            "confidence": r.get("confidence"),
+            "season": r.get("season"),
+            "evidence": r.get("evidence"),
+            "source": url if isinstance(url, str) and url.startswith("http") else None,
+        }
+    }
+
+
 def contact_fields(c):
     """Seed fields for one school's contacts; only real, emailable entries are kept."""
     if not c:
@@ -279,6 +310,7 @@ def main():
     scorecard = read_json("scorecard.json")
     research = load_research() if (RAW / "research").exists() else {}
     contacts = load_contacts()
+    systems = load_systems()
     sheet = match_sheet(read_json("spreadsheet.json"), directory) if (RAW / "spreadsheet.json").exists() else {}
 
     schools = []
@@ -286,6 +318,7 @@ def main():
         key = str(d["ncaaOrgId"])
         school = build_school(d, scorecard.get(key, {}), tournament.get(key, {}), research.get(key), sheet.get(key))
         school.update(contact_fields(contacts.get(key)))
+        school.update(system_fields(systems.get(key)))
         schools.append(school)
 
     # Two schools with one display name (Miami FL/OH, Loyola IL/MD): add the state.

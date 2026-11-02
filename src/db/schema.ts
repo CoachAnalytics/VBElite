@@ -68,6 +68,14 @@ export const schools = pgTable("schools", {
   recruitingQuestionnaire: text("recruiting_questionnaire"),
   contactsCheckedAt: timestamp("contacts_checked_at", { withTimezone: true }),
   contactsSource: text("contacts_source"),
+  // Offensive system in the latest researched season: 5-1 | 6-2 | mixed (null = unknown)
+  offenseSystem: text("offense_system"),
+  // confirmed | likely
+  offenseConfidence: text("offense_confidence"),
+  offenseSeason: integer("offense_season"),
+  // One plain-English line for families, and where it came from
+  offenseEvidence: text("offense_evidence"),
+  offenseSource: text("offense_source"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

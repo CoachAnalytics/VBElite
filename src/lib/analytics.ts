@@ -372,6 +372,10 @@ export type SchoolAnalysis = {
   headCoach: string | null;
   coachSince: number | null;
   coachTenure: number | null;
+  /** 5-1 | 6-2 | mixed, its season and confidence (null = unknown). */
+  offenseSystem: string | null;
+  offenseSeason: number | null;
+  offenseConfidence: string | null;
   apr: number | null;
   aprNote: string | null;
   graduationRate: number | null;
@@ -415,6 +419,9 @@ export function analyzeSchool(bundle: SchoolBundle, athlete: AthleteInput, asOf:
     headCoach: s.headCoach,
     coachSince: s.coachSince,
     coachTenure: coachTenure(s, asOf),
+    offenseSystem: s.offenseSystem,
+    offenseSeason: s.offenseSeason,
+    offenseConfidence: s.offenseConfidence,
     apr: s.apr,
     aprNote: s.aprNote,
     graduationRate: s.graduationRate,

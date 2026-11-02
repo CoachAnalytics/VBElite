@@ -38,6 +38,8 @@ export type SchoolInfo = {
   positionCovered: boolean;
   /** Commits at the athlete's position in the classes ahead of and with her. */
   incomingAtPosition: number;
+  /** 5-1 | 6-2 | mixed in the latest researched season (null = unknown). */
+  offenseSystem?: string | null;
 };
 
 export type AthleteBasics = {
@@ -313,6 +315,22 @@ export function recommend(
           ? `No ${athlete.position} commits yet in the classes ahead of her.`
           : `${s.incomingAtPosition} ${athlete.position} commit${s.incomingAtPosition > 1 ? "s" : ""} in the classes ahead of her.`,
       );
+    }
+
+    // Offense: a 6-2 puts two setters on the court, so setters weigh it like playing time.
+    if (athlete.position === "S" && s.offenseSystem) {
+      if (s.offenseSystem === "6-2") {
+        parts.push([1, w.playing * 0.5]);
+        reasons.push("Runs a 6-2: two setters play, so there's more setting time to go around.");
+      } else if (s.offenseSystem === "5-1") {
+        parts.push([0.3, w.playing * 0.5]);
+        reasons.push("Runs a 5-1: one setter plays all six rotations.");
+      } else {
+        parts.push([0.65, w.playing * 0.5]);
+        reasons.push("Has used both a 5-1 and a 6-2.");
+      }
+    } else if (athlete.position === "OPP" && s.offenseSystem === "6-2") {
+      reasons.push("Runs a 6-2: the second setter usually plays opposite when in the back row.");
     }
 
     if (s.satAvg != null && a.sat != null) {

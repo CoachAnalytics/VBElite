@@ -158,6 +158,20 @@ export function CompareTables({ analyses, defaultPosition }: { analyses: SchoolA
       { label: "Volleyball APR", value: (a) => a.apr, show: (a) => <span title={a.aprNote ?? undefined}>{a.apr ?? "—"}</span> },
       { label: "Head coach", left: true, value: (a) => a.headCoach },
       {
+        label: "Offense",
+        left: true,
+        value: (a) => (a.offenseSystem === "mixed" ? "5-1/6-2" : a.offenseSystem),
+        show: (a) =>
+          a.offenseSystem ? (
+            <span title={`${a.offenseSeason ?? ""} season, ${a.offenseConfidence ?? ""}`}>
+              {a.offenseSystem === "mixed" ? "5-1/6-2" : a.offenseSystem}
+              {a.offenseConfidence === "likely" && <span className="text-ink-3"> (likely)</span>}
+            </span>
+          ) : (
+            "—"
+          ),
+      },
+      {
         label: "Coach since",
         value: (a) => a.coachSince,
         show: (a) => <span className={a.coachTenure != null && a.coachTenure <= 2 ? "text-warn font-medium" : ""}>{a.coachSince ?? "—"}</span>,

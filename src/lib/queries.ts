@@ -154,6 +154,7 @@ export async function getRecommendationData(position: string, gradYear: number) 
     program: programSummary(seasons.filter((x) => x.schoolId === s.id)),
     positionCovered: s.positionsCovered.split(",").includes(position),
     incomingAtPosition: incoming.get(s.id) ?? 0,
+    offenseSystem: s.offenseSystem,
   }));
   return { schools: infos, players };
 }

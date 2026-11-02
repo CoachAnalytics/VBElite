@@ -60,6 +60,13 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
       studentFacultyRatio: s.studentFacultyRatio ?? null,
       researchedAt: s.researchedAt ? new Date(s.researchedAt) : null,
       sources: s.sources?.length ? JSON.stringify(s.sources) : null,
+      ...(s.offense !== undefined && {
+        offenseSystem: s.offense.system,
+        offenseConfidence: s.offense.system ? s.offense.confidence : null,
+        offenseSeason: s.offense.system ? s.offense.season : null,
+        offenseEvidence: s.offense.system ? s.offense.evidence : null,
+        offenseSource: s.offense.system ? s.offense.source : null,
+      }),
       ...(s.contacts !== undefined && {
         recruitingQuestionnaire: s.recruitingQuestionnaire ?? null,
         contactsCheckedAt: s.contactsCheckedAt ? new Date(s.contactsCheckedAt) : null,

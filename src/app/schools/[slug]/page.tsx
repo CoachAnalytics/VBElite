@@ -147,6 +147,33 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
         <Stat label="Distance from home" value={a?.distanceMiles != null ? `${Math.round(a.distanceMiles).toLocaleString()} mi` : "—"} sub="straight line" />
       </section>
 
+      {school.offenseSystem && (
+        <section className="card flex flex-wrap items-start gap-x-4 gap-y-1 p-4 text-sm">
+          <div className="shrink-0">
+            <div className="text-xs text-ink-3">Offense ({school.offenseSeason})</div>
+            <div className="text-xl font-semibold">{school.offenseSystem === "mixed" ? "5-1 and 6-2" : school.offenseSystem}</div>
+          </div>
+          <div className="min-w-0 flex-1 text-ink-2">
+            {school.offenseSystem === "6-2"
+              ? "Two setters, each setting from the back row."
+              : school.offenseSystem === "5-1"
+                ? "One setter runs the offense in all six rotations."
+                : "Used both a 5-1 and a 6-2 during the season."}
+            {school.offenseEvidence && <div className="mt-0.5 text-xs text-ink-3">{school.offenseEvidence}</div>}
+            <div className="mt-0.5 text-xs text-ink-3">
+              {school.offenseConfidence === "likely" ? "Likely, from partial-season numbers. " : ""}
+              Systems can change with each season&apos;s roster.
+              {school.offenseSource && /^https?:\/\//.test(school.offenseSource) && (
+                <>
+                  {" "}
+                  <a href={school.offenseSource} target="_blank" rel="noopener noreferrer" className="underline">Source</a>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {a && pos && athlete && (
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">{positionLabel(pos)} outlook for the class of {athlete.gradYear}</h2>

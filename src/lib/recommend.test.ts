@@ -209,3 +209,36 @@ describe("estimateLevel with projected measurables", () => {
     expect(withProj.drivers.join(" ")).toMatch(/projected approach touch is in the range of top D1 programs \(VB Elite estimate\)/);
   });
 });
+
+describe("offense in recommendations", () => {
+  it("tells setters and opposites about a 6-2, and favors it for setters", async () => {
+    const { recommend, programLevels } = await import("./recommend");
+    const { programSummary } = await import("./analytics");
+    const base = {
+      slug: "x", conference: "A", city: null, state: "OH", control: "public", enrollment: 10000, latitude: null, longitude: null,
+      admissionRate: null, satAvg: null, tuitionInState: null, tuitionOutState: null, avgNetPrice: null,
+      program: programSummary([]), positionCovered: false, incomingAtPosition: 0,
+    };
+    const schools = [
+      { ...base, id: 1, name: "Two Setters U", offenseSystem: "6-2" },
+      { ...base, id: 2, name: "One Setter U", offenseSystem: "5-1" },
+    ];
+    const levels = new Map([[1, 2.0], [2, 2.0]]);
+    const estimate = { level: 2.0, low: 1.7, high: 2.3, label: "", drivers: [], belowD1: false, confirmedBy: null };
+    const answers = {
+      wantPlayingTime: "3", wantWinning: "1", wantAcademics: "1", wantCost: "1", maxDistance: "any", regions: [], size: "any",
+      control: "any", sat: null, gpa: "3.5",
+    } as never;
+    const athlete = (position: string) => ({ position, heightIn: 70, homeState: "OH", latitude: null, longitude: null });
+    void programLevels;
+    const setter = recommend(schools, levels, estimate, answers, athlete("S"));
+    const two = setter.find((p) => p.school.id === 1)!;
+    const one = setter.find((p) => p.school.id === 2)!;
+    expect(two.reasons.join(" ")).toMatch(/Runs a 6-2: two setters play/);
+    expect(one.reasons.join(" ")).toMatch(/Runs a 5-1/);
+    expect(two.score).toBeGreaterThan(one.score);
+    const opp = recommend(schools, levels, estimate, answers, athlete("OPP"));
+    expect(opp.find((p) => p.school.id === 1)!.reasons.join(" ")).toMatch(/second setter usually plays opposite/);
+    expect(opp.find((p) => p.school.id === 2)!.reasons.join(" ")).not.toMatch(/5-1/);
+  });
+});
