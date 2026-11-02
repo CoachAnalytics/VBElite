@@ -165,7 +165,7 @@ export async function setTier(form: FormData) {
     .update(schema.savedSchools)
     .set({ tier })
     .where(and(eq(schema.savedSchools.athleteId, athlete.id), eq(schema.savedSchools.schoolId, schoolId)));
-  revalidatePath("/compare");
+  revalidatePath("/", "layout");
 }
 
 /** Saves the starting-point questionnaire (sent as one JSON field) and shows the recommendations. */

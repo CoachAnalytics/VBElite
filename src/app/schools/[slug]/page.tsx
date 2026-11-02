@@ -94,7 +94,7 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
               <span className="text-ink-3">nothing logged yet</span>
             )}
           </div>
-          <Link href="/recruiting" className="text-accent-ink underline">{myEvents.length ? "Open log" : "Log an update"}</Link>
+          <Link href={`/recruiting#${school.slug}`} className="text-accent-ink underline">{myEvents.length ? "Open log" : "Log an update"}</Link>
         </section>
       )}
 

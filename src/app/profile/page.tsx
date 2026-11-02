@@ -33,12 +33,12 @@ export default async function ProfilePage() {
       )}
       {athlete?.questionnaireAt && (
         <section className="card space-y-2 p-5">
-          <h2 className="font-medium">Recruiting log</h2>
+          <h2 className="font-medium">My schools &amp; recruiting log</h2>
           <p className="text-sm text-ink-2">
-            Track emails, coach replies, camp invites, visits and offers. You&apos;ll see where each school stands and get
-            suggestions for similar programs.
+            Her list of schools in one place. Open any school to log emails, coach replies, camp invites, visits and offers,
+            see where it stands, and get suggestions for similar programs.
           </p>
-          <Link href="/recruiting" className="btn-primary">Open recruiting log</Link>
+          <Link href="/recruiting" className="btn-primary">Open my schools</Link>
         </section>
       )}
       {athlete?.questionnaireAt && <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />}

@@ -26,7 +26,7 @@ const TABS = [
   },
   {
     href: "/recruiting",
-    label: "Recruiting",
+    label: "My schools",
     icon: (
       <>
         <path d="M4 4h16v16H4z" />

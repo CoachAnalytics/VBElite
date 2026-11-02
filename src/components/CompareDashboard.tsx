@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { setTier, toggleSchool } from "@/app/actions";
+import { toggleSchool } from "@/app/actions";
+import { TierSelect } from "./TierSelect";
 import {
   DEFAULT_WEIGHTS,
   FACTORS,
@@ -17,7 +18,7 @@ import { TIERS } from "@/lib/tiers";
 import { CompetitionChart } from "./CompetitionChart";
 import { Sparkline } from "./Sparkline";
 
-type Row = SchoolAnalysis & { tier: string };
+type Row = SchoolAnalysis & { tier: string; recruiting: { label: string; stage: number } | null };
 type SortKey = "score" | "name" | "winPct" | "competition" | "cost" | "distance" | "coach" | "grad";
 
 // Weights are a per-browser convenience kept in localStorage; if storage is
@@ -203,18 +204,16 @@ export function CompareDashboard({
                   <td className="px-3 py-2.5">
                     <Link href={`/schools/${a.slug}`} className="font-medium hover:underline">{a.name}</Link>
                     <div className="text-xs text-ink-3">{a.division} · {a.conference}</div>
-                    <form action={setTier} className="mt-1">
-                      <input type="hidden" name="schoolId" value={a.id} />
-                      <select
-                        name="tier"
-                        defaultValue={a.tier}
-                        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                        className="rounded border border-line bg-surface px-1 py-0.5 text-xs text-ink-2"
-                        aria-label={`List for ${a.name}`}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <TierSelect schoolId={a.id} tier={a.tier} label={`List for ${a.name}`} />
+                      <Link
+                        href={`/recruiting#${a.slug}`}
+                        className={`rounded-full px-2 py-0.5 text-xs hover:underline ${a.recruiting && a.recruiting.stage >= 4 ? "bg-good/15 text-good" : a.recruiting && a.recruiting.stage >= 2 ? "bg-accent/10 text-accent-ink" : "border border-line text-ink-3"}`}
+                        title="Open this school's recruiting log"
                       >
-                        {TIERS.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
-                      </select>
-                    </form>
+                        {a.recruiting?.label ?? "Log"} ›
+                      </Link>
+                    </div>
                   </td>
                   <td className="px-3 py-2.5">
                     {s?.score == null ? "—" : (

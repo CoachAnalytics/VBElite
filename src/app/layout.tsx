@@ -54,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/recommendations" className="hidden text-ink-2 hover:text-ink sm:inline">For you</Link>
                 <Link href="/compare" className="hidden text-ink-2 hover:text-ink sm:inline">Compare</Link>
                 <Link href="/schools" className="hidden text-ink-2 hover:text-ink sm:inline">Schools</Link>
-                <Link href="/recruiting" className="hidden text-ink-2 hover:text-ink sm:inline">Recruiting</Link>
+                <Link href="/recruiting" className="hidden text-ink-2 hover:text-ink sm:inline">My schools</Link>
                 <Link href="/profile" className="hidden text-ink-2 hover:text-ink sm:inline">Athlete profile</Link>
                 {isAdmin(user) && <Link href="/admin" className="text-ink-2 hover:text-ink">Admin</Link>}
                 <form action={logout} className="ml-auto">
