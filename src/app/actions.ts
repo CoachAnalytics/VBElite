@@ -12,6 +12,7 @@ import { answersSchema, STEPS } from "@/lib/questionnaire";
 import { COACH_ROLES, responseSchema } from "@/lib/coach";
 import { eventSchema } from "@/lib/recruiting";
 import { CONTACT_SOURCES } from "@/lib/coachEmail";
+import { recordMeasurement, recordOutcome } from "@/lib/athleteData";
 import { createCoachLink, saveCoachResponse } from "@/lib/coachLinks";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -136,11 +137,15 @@ export async function saveAthlete(_: FormState, form: FormData): Promise<FormSta
     latitude: place.latitude,
     longitude: place.longitude,
   };
+  let athleteId: number;
   if (existing) {
     await db.update(schema.athletes).set(values).where(eq(schema.athletes.id, existing.id));
+    athleteId = existing.id;
   } else {
-    await db.insert(schema.athletes).values({ ...values, userId: user.id });
+    const [row] = await db.insert(schema.athletes).values({ ...values, userId: user.id }).returning({ id: schema.athletes.id });
+    athleteId = row.id;
   }
+  await recordMeasurement(athleteId, "profile");
   revalidatePath("/", "layout");
   // New athletes continue to the starting-point questionnaire.
   if (!existing) redirect("/questionnaire");
@@ -200,6 +205,7 @@ export async function saveQuestionnaire(_: FormState, form: FormData): Promise<F
     .update(schema.athletes)
     .set({ questionnaire: JSON.stringify(parsed.data), questionnaireAt: new Date() })
     .where(eq(schema.athletes.id, athlete.id));
+  await recordMeasurement(athlete.id, "questionnaire");
   revalidatePath("/", "layout");
   redirect("/recommendations");
 }
@@ -266,8 +272,9 @@ export async function submitCoachResponse(_: CoachResponseState, form: FormData)
     note: form.get("note") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const ok = await saveCoachResponse(token, parsed.data);
-  if (!ok) return { error: "This link has already been answered or has expired. Ask the athlete to send a new one." };
+  const athleteId = await saveCoachResponse(token, parsed.data);
+  if (athleteId == null) return { error: "This link has already been answered or has expired. Ask the athlete to send a new one." };
+  if (parsed.data.heightIn != null) await recordMeasurement(athleteId, "coach", { heightIn: parsed.data.heightIn });
   return { done: true };
 }
 
@@ -287,14 +294,18 @@ export async function addRecruitingEvent(_: EventFormState, form: FormData): Pro
   const d = parsed.data;
   const [school] = await db.select({ id: schema.schools.id }).from(schema.schools).where(eq(schema.schools.id, d.schoolId));
   if (!school) return { error: "Choose a school from the list" };
-  await db.insert(schema.recruitingEvents).values({
-    athleteId: athlete.id,
-    schoolId: d.schoolId,
-    type: d.type,
-    date: d.date,
-    coachName: d.coachName || null,
-    note: d.note || null,
-  });
+  const [event] = await db
+    .insert(schema.recruitingEvents)
+    .values({
+      athleteId: athlete.id,
+      schoolId: d.schoolId,
+      type: d.type,
+      date: d.date,
+      coachName: d.coachName || null,
+      note: d.note || null,
+    })
+    .returning({ id: schema.recruitingEvents.id });
+  await recordOutcome(athlete.id, { id: event.id, schoolId: d.schoolId, type: d.type, date: d.date });
   await db.insert(schema.savedSchools).values({ athleteId: athlete.id, schoolId: d.schoolId }).onConflictDoNothing();
   revalidatePath("/", "layout");
   return { ok: true, at: Date.now() };
@@ -357,4 +368,15 @@ export async function submitContact(_: ContactFormState, form: FormData): Promis
   revalidatePath("/schools/[slug]", "page");
   revalidatePath("/admin");
   return { ok: true, at: Date.now() };
+}
+
+/** Turns her opt-in to VB Elite's anonymous statistics on or off. */
+export async function setResearchConsent(form: FormData) {
+  const athlete = await requireAthlete();
+  const on = form.get("consent") === "yes";
+  await db
+    .update(schema.athletes)
+    .set({ researchConsent: on, researchConsentAt: on ? new Date() : null })
+    .where(eq(schema.athletes.id, athlete.id));
+  revalidatePath("/", "layout");
 }

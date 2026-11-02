@@ -163,6 +163,7 @@ describe("parseHeight", () => {
     expect(parseHeight("88", r)).toBe(88);
     expect(parseHeight("7\u20198\u201D", r)).toBe(92);
     expect(parseHeight("10'", r)).toBe(120);
+    expect(parseHeight(`9'11.5"`, r)).toBe(119.5);
     expect(parseHeight("9'13\"", r)).toBeNull();
     expect(parseHeight("200", r)).toBeNull();
     // A player's height still rejects reach-sized numbers.

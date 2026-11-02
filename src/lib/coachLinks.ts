@@ -38,15 +38,15 @@ export async function findCoachLink(token: string) {
   return { problem: null, ...row };
 }
 
-/** Records the coach's answers. Only an open, unexpired link accepts a response. */
-export async function saveCoachResponse(token: string, response: CoachResponse): Promise<boolean> {
+/** Records the coach's answers; returns the athlete's id, or null if the link is closed or expired. */
+export async function saveCoachResponse(token: string, response: CoachResponse): Promise<number | null> {
   const found = await findCoachLink(token);
-  if (found.problem) return false;
+  if (found.problem) return null;
   await db
     .update(schema.coachConfirmations)
     .set({ response: JSON.stringify(response), respondedAt: new Date() })
     .where(eq(schema.coachConfirmations.id, found.link.id));
-  return true;
+  return found.link.athleteId;
 }
 
 /** The athlete's most recent coach confirmation, if any. */

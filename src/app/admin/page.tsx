@@ -7,7 +7,9 @@ import { AddAdminForm } from "@/components/AddAdminForm";
 import { SyncButton } from "@/components/SyncButton";
 import { dataRepo, syncConfigured } from "@/lib/sync";
 import { removeAdmin, reviewContact, syncNow } from "./actions";
-import { pendingContactSubmissions } from "@/lib/queries";
+import { pendingContactSubmissions, researchDataset } from "@/lib/queries";
+import { AGE_GROUPS, coverage, NORM_TARGET } from "@/lib/datasetStats";
+import { POSITIONS } from "@/lib/positions";
 import { CONTACT_SOURCES, onSchoolDomain, ROLE_LABEL } from "@/lib/coachEmail";
 
 // Uploads and "Sync now" load every school, which can take a minute or two.
@@ -50,7 +52,14 @@ export default async function AdminPage() {
   const fmtTime = (d: Date) =>
     new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   const configured = syncConfigured();
-  const submissions = await pendingContactSubmissions();
+  const [submissions, dataset, [consented]] = await Promise.all([
+    pendingContactSubmissions(),
+    researchDataset(),
+    db.select({ n: count() }).from(schema.athletes).where(eq(schema.athletes.researchConsent, true)),
+  ]);
+  const cover = coverage(dataset.measurements);
+  const offers = dataset.outcomes.filter((o) => o.type === "offer").length;
+  const commitsLogged = dataset.outcomes.filter((o) => o.type === "committed").length;
 
   return (
     <div className="space-y-8">
@@ -107,6 +116,49 @@ export default async function AdminPage() {
             })}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Data we&apos;re building</h2>
+        <p className="max-w-2xl text-sm text-ink-2">
+          {consented.n} athletes have opted in. Their measurement snapshots and offer/commit snapshots (frozen when logged, with
+          her age, measurables, club level and the program&apos;s level) build VB Elite&apos;s own norms. Each cell is athletes
+          measured at that position and age group; at {NORM_TARGET} a cell has enough to replace the published European
+          estimates.
+        </p>
+        <p className="text-sm">
+          <b>{dataset.measurements.length}</b> measurement snapshots · <b>{offers}</b> offers · <b>{commitsLogged}</b> commitments
+          {" · "}
+          <a href="/admin/data?kind=measurements" className="text-accent-ink underline">Download measurements (CSV)</a>
+          {" · "}
+          <a href="/admin/data?kind=outcomes" className="text-accent-ink underline">Download offers &amp; commits (CSV)</a>
+        </p>
+        <div className="overflow-x-auto">
+          <table className="card min-w-[520px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-3">
+                <th className="px-3 py-2 font-medium">Position</th>
+                {AGE_GROUPS.map((g) => <th key={g} className="px-3 py-2 text-right font-medium">{g}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {POSITIONS.map((p) => (
+                <tr key={p.code} className="border-t border-line">
+                  <td className="px-3 py-1.5">{p.label}</td>
+                  {AGE_GROUPS.map((g) => {
+                    const n = cover(p.code, g);
+                    return (
+                      <td key={g} className={`tabular px-3 py-1.5 text-right ${n >= NORM_TARGET ? "font-semibold text-good" : n ? "" : "text-ink-3"}`}>
+                        {n}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-ink-3">Downloads include opted-in athletes only, with pseudonyms (A1, A2…) instead of names or accounts.</p>
       </section>
 
       <section className="space-y-3">

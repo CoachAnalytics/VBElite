@@ -241,3 +241,84 @@ export async function pendingContactSubmissions() {
     .where(eq(schema.contactSubmissions.status, "pending"))
     .orderBy(asc(schema.contactSubmissions.createdAt));
 }
+
+/** Listed heights (inches) of every D1 commit at a position, all classes: U.S. elite peers. */
+export async function commitHeights(position: string): Promise<number[]> {
+  const rows = await db
+    .select({ heightIn: schema.commits.heightIn })
+    .from(schema.commits)
+    .where(eq(schema.commits.primaryPosition, position));
+  return rows.map((r) => r.heightIn).filter((h): h is number => h != null && h >= 60 && h <= 84);
+}
+
+/** When her measurables were last recorded (any source). */
+export async function lastMeasuredAt(athleteId: number): Promise<Date | null> {
+  const [row] = await db
+    .select({ at: schema.athleteMeasurements.measuredAt })
+    .from(schema.athleteMeasurements)
+    .where(eq(schema.athleteMeasurements.athleteId, athleteId))
+    .orderBy(desc(schema.athleteMeasurements.measuredAt))
+    .limit(1);
+  return row?.at ?? null;
+}
+
+/**
+ * VB Elite's own dataset, opted-in athletes only, without names or contact details: every
+ * measurement snapshot and every offer/commitment snapshot.
+ */
+export async function researchDataset() {
+  const consented = eq(schema.athletes.researchConsent, true);
+  const [measurements, outcomes] = await Promise.all([
+    db
+      .select({
+        athleteId: schema.athleteMeasurements.athleteId,
+        measuredAt: schema.athleteMeasurements.measuredAt,
+        ageYears: schema.athleteMeasurements.ageYears,
+        ageExact: schema.athleteMeasurements.ageExact,
+        position: schema.athleteMeasurements.position,
+        gradYear: schema.athletes.gradYear,
+        heightIn: schema.athleteMeasurements.heightIn,
+        standingReachIn: schema.athleteMeasurements.standingReachIn,
+        blockTouchIn: schema.athleteMeasurements.blockTouchIn,
+        approachTouchIn: schema.athleteMeasurements.approachTouchIn,
+        source: schema.athleteMeasurements.source,
+      })
+      .from(schema.athleteMeasurements)
+      .innerJoin(schema.athletes, eq(schema.athletes.id, schema.athleteMeasurements.athleteId))
+      .where(consented)
+      .orderBy(asc(schema.athleteMeasurements.measuredAt)),
+    db
+      .select({
+        athleteId: schema.recruitingOutcomes.athleteId,
+        type: schema.recruitingOutcomes.type,
+        occurredAt: schema.recruitingOutcomes.occurredAt,
+        school: schema.schools.name,
+        conference: schema.recruitingOutcomes.conference,
+        programLevel: schema.recruitingOutcomes.programLevel,
+        gradYear: schema.recruitingOutcomes.gradYear,
+        position: schema.recruitingOutcomes.position,
+        ageYears: schema.recruitingOutcomes.ageYears,
+        ageExact: schema.recruitingOutcomes.ageExact,
+        heightIn: schema.recruitingOutcomes.heightIn,
+        standingReachIn: schema.recruitingOutcomes.standingReachIn,
+        blockTouchIn: schema.recruitingOutcomes.blockTouchIn,
+        approachTouchIn: schema.recruitingOutcomes.approachTouchIn,
+        measuredAt: schema.recruitingOutcomes.measuredAt,
+        clubDivision: schema.recruitingOutcomes.clubDivision,
+        clubRole: schema.recruitingOutcomes.clubRole,
+        coachProjection: schema.recruitingOutcomes.coachProjection,
+      })
+      .from(schema.recruitingOutcomes)
+      .innerJoin(schema.athletes, eq(schema.athletes.id, schema.recruitingOutcomes.athleteId))
+      .innerJoin(schema.schools, eq(schema.schools.id, schema.recruitingOutcomes.schoolId))
+      .where(consented)
+      .orderBy(asc(schema.recruitingOutcomes.occurredAt)),
+  ]);
+  // Replace database ids with per-export pseudonyms so rows from one athlete still link up.
+  const alias = new Map<number, string>();
+  const pseudo = (id: number) => alias.get(id) ?? (alias.set(id, `A${alias.size + 1}`), alias.get(id)!);
+  return {
+    measurements: measurements.map(({ athleteId, ...r }) => ({ athlete: pseudo(athleteId), ...r })),
+    outcomes: outcomes.map(({ athleteId, ...r }) => ({ athlete: pseudo(athleteId), ...r })),
+  };
+}

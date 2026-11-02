@@ -224,7 +224,7 @@ export const QUESTION_COUNT = STEPS.reduce((n, s) => n + s.questions.length, 0);
 
 const choice = (q: string[]) => z.enum(q as [string, ...string[]]);
 const opts = (id: string): string[] => STEPS.flatMap((s) => s.questions).find((q) => q.id === id)!.options!.map((o) => o.value);
-const inches = z.number().int().min(60).max(150).nullable();
+const inches = z.number().multipleOf(0.5).min(60).max(150).nullable();
 
 export const answersSchema = z.object({
   standingReach: inches,

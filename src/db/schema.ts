@@ -197,6 +197,10 @@ export const athletes = pgTable("athletes", {
   // Month and year only (no full birth date): her age drives the age-adjusted comparisons.
   birthYear: integer("birth_year"),
   birthMonth: integer("birth_month"),
+  // Opt-in: include her measurements and offers (no name or contact details) in VB Elite's
+  // anonymous statistics, used to build age-by-position norms and projections.
+  researchConsent: boolean("research_consent").notNull().default(false),
+  researchConsentAt: timestamp("research_consent_at", { withTimezone: true }),
   homeZip: text("home_zip").notNull(),
   homeCity: text("home_city"),
   homeState: text("home_state"),
@@ -239,6 +243,65 @@ export const recruitingEvents = pgTable("recruiting_events", {
   date: timestamp("date", { withTimezone: true }).notNull(),
   coachName: text("coach_name"),
   note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Every time her measurables change, a dated snapshot with her age then. Her own history, and
+// (when she opted in) the raw material for VB Elite's age-by-position norms.
+export const athleteMeasurements = pgTable("athlete_measurements", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  measuredAt: timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+  ageYears: real("age_years").notNull(),
+  // Whether the age came from her birth month/year (exact) or her graduation year (estimated)
+  ageExact: boolean("age_exact").notNull(),
+  position: text("position").notNull(),
+  heightIn: real("height_in"),
+  standingReachIn: real("standing_reach_in"),
+  blockTouchIn: real("block_touch_in"),
+  approachTouchIn: real("approach_touch_in"),
+  // profile | questionnaire | coach
+  source: text("source").notNull(),
+});
+
+// A frozen snapshot of the athlete when she logged an offer or commitment: who offered, at what
+// level, and what her measurables, age and club level were at the time. Building toward real
+// "girls like her got offers from programs like these" projections.
+export const recruitingOutcomes = pgTable("recruiting_outcomes", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  // Deleting the log entry (a mistake) deletes the snapshot too
+  eventId: integer("event_id")
+    .notNull()
+    .unique()
+    .references(() => recruitingEvents.id, { onDelete: "cascade" }),
+  schoolId: integer("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  // offer | committed
+  type: text("type").notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  gradYear: integer("grad_year").notNull(),
+  position: text("position").notNull(),
+  ageYears: real("age_years").notNull(),
+  ageExact: boolean("age_exact").notNull(),
+  heightIn: real("height_in"),
+  standingReachIn: real("standing_reach_in"),
+  blockTouchIn: real("block_touch_in"),
+  approachTouchIn: real("approach_touch_in"),
+  // When those measurables were last updated (older = less reliable)
+  measuredAt: timestamp("measured_at", { withTimezone: true }),
+  // The program's level (1-3 scale) and conference when the offer came
+  programLevel: real("program_level"),
+  conference: text("conference"),
+  // From the questionnaire (or a coach's confirmation) at the time
+  clubDivision: text("club_division"),
+  clubRole: text("club_role"),
+  coachProjection: text("coach_projection"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

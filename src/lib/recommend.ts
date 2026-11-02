@@ -167,12 +167,19 @@ export function estimateLevel(
   confirmation: CoachConfirmation | null = null,
   /** Her strongest real recruiting interest: an offer or official visit (see interestLevel). */
   interest: { level: number; schoolName: string; type: string } | null = null,
+  /**
+   * Her measurables projected to 18 (see development.ts). When given, her projected height
+   * replaces today's, and her projected approach touch counts against college estimates.
+   */
+  projection: { heightIn: number; approachIn: number | null; approachBenchmarks: HeightBenchmarks } | null = null,
 ): LevelEstimate {
   const coach = confirmation ? COACH[confirmation.level] : COACH[a.coachProjection];
   const role = ROLE[confirmation?.role ?? a.clubRole];
   const club = clamp(DIVISION[a.clubDivision] + FINISH[a.clubFinish] + role + HS[a.hsRole] + CONTACT[a.contact]);
-  const heightIn = confirmation?.heightIn ?? athlete.heightIn;
+  // A coach's corrected height is today's height too, so the projection applies on top of it.
+  const heightIn = projection ? projection.heightIn : (confirmation?.heightIn ?? athlete.heightIn);
   const height = heightLevel(heightIn, benchmarks);
+  const touch = projection?.approachIn != null ? heightLevel(projection.approachIn, projection.approachBenchmarks) : null;
   // Height matters less for setters and liberos.
   const heightWeight = athlete.position === "LDS" || athlete.position === "S" ? 0.1 : 0.2;
   const coachWeight = confirmation ? 0.55 : 0.45;
@@ -181,6 +188,7 @@ export function estimateLevel(
     ...(coach != null ? ([[coach, coachWeight]] as [number, number][]) : []),
     [club, coach != null ? 0.35 : 0.65],
     ...(height != null ? ([[height, heightWeight]] as [number, number][]) : []),
+    ...(touch != null ? ([[touch, heightWeight * 0.75]] as [number, number][]) : []),
     // A real offer (or official visit) is the strongest evidence there is.
     ...(interest ? ([[interest.level, interest.type === "official" ? 0.3 : 0.5]] as [number, number][]) : []),
   ];
@@ -206,7 +214,14 @@ export function estimateLevel(
   }
   drivers.push(`Her club level and playing role point to ${levelPhrase(club)}.`);
   if (height != null) {
-    drivers.push(`Her height is typical of ${levelPhrase(height)} players at her position.`);
+    drivers.push(
+      projection
+        ? `Her projected height at 18 is typical of ${levelPhrase(height)} players at her position.`
+        : `Her height is typical of ${levelPhrase(height)} players at her position.`,
+    );
+  }
+  if (touch != null) {
+    drivers.push(`Her projected approach touch fits ${levelPhrase(touch)} programs (VB Elite estimate).`);
   }
   return {
     level,

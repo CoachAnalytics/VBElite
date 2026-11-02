@@ -4,7 +4,10 @@ import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { parseAnswers } from "@/lib/questionnaire";
 import { estimateLevel, heightBenchmarks, levelPhrase, programLevels, recommend, type Tier } from "@/lib/recommend";
-import { getRecommendationData, getRecruitingEvents, getSavedSchools, requireOnboarded } from "@/lib/queries";
+import { commitHeights, getRecommendationData, getRecruitingEvents, getSavedSchools, lastMeasuredAt, requireOnboarded } from "@/lib/queries";
+import { ageAdjusted, ageYears, collegeMeasurables, monthsSince, shareBelow } from "@/lib/development";
+import { currentMeasurables } from "@/lib/athleteData";
+import { MeasurablesCard, type CollegeBand } from "@/components/MeasurablesCard";
 import { interestLevel, schoolStatuses } from "@/lib/recruiting";
 import { latestConfirmation } from "@/lib/coachLinks";
 import { CoachConfirmSection } from "@/components/CoachConfirmSection";
@@ -18,11 +21,13 @@ const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
 export default async function RecommendationsPage() {
   const { athlete } = await requireOnboarded();
   const answers = parseAnswers(athlete.questionnaire);
-  const [{ schools, players }, saved, confirmation, events] = await Promise.all([
+  const [{ schools, players }, saved, confirmation, events, commits, measuredAt] = await Promise.all([
     getRecommendationData(athlete.position, athlete.gradYear),
     getSavedSchools(athlete.id),
     latestConfirmation(athlete.id),
     getRecruitingEvents(athlete.id),
+    commitHeights(athlete.position),
+    lastMeasuredAt(athlete.id),
   ]);
   const savedIds = new Set(saved.map((s) => s.schoolId));
   const levels = programLevels(schools);
@@ -38,7 +43,29 @@ export default async function RecommendationsPage() {
   const interest = strongest
     ? { ...strongest, schoolName: schools.find((x) => x.id === strongest.schoolId)?.name ?? "a school" }
     : null;
-  const estimate = answers ? estimateLevel(answers, basics, benchmarks, confirmation, interest) : null;
+  // Age-adjusted measurables: compared with elite peers her age, projected to 18.
+  const now = new Date();
+  const birth = athlete.birthYear && athlete.birthMonth ? { year: athlete.birthYear, month: athlete.birthMonth } : null;
+  const age = ageYears(now, athlete.gradYear, birth);
+  const measurables = { ...currentMeasurables(athlete), heightIn: confirmation?.heightIn ?? athlete.heightIn };
+  const views = ageAdjusted(measurables, age, athlete.position);
+  const projectedOf = (k: string) => views.find((v) => v.key === k)?.projectedIn.mid ?? null;
+  const bandHeights = [
+    { label: "Lower-conference", h: benchmarks.low },
+    { label: "Mid-level", h: benchmarks.mid },
+    { label: "Top D1", h: benchmarks.high },
+  ];
+  const college: CollegeBand[] = bandHeights
+    .filter((b): b is { label: string; h: number } => b.h != null)
+    .map((b) => ({ label: b.label, values: collegeMeasurables(b.h, athlete.position) }));
+  const touchBench = (k: "approach") => {
+    const v = bandHeights.map((b) => (b.h != null ? collegeMeasurables(b.h, athlete.position)[k] : null));
+    return { low: v[0], mid: v[1], high: v[2] };
+  };
+  const projectedHeight = projectedOf("height");
+  const projection =
+    projectedHeight != null ? { heightIn: projectedHeight, approachIn: projectedOf("approach"), approachBenchmarks: touchBench("approach") } : null;
+  const estimate = answers ? estimateLevel(answers, basics, benchmarks, confirmation, interest, projection) : null;
   const picks = answers && estimate ? recommend(schools, levels, estimate, answers, basics) : [];
   const first = athlete.name.split(" ")[0];
   const notSaved = picks.filter((p) => !savedIds.has(p.school.id));
@@ -96,6 +123,18 @@ export default async function RecommendationsPage() {
           </p>
         </section>
       )}
+
+      <MeasurablesCard
+        first={first}
+        position={athlete.position}
+        age={age}
+        ageExact={!!birth}
+        views={views}
+        college={college}
+        commitPct={projectedHeight != null ? shareBelow(projectedHeight, commits) : null}
+        monthsSinceMeasured={measuredAt ? monthsSince(measuredAt, now) : athlete.heightUpdatedAt ? monthsSince(athlete.heightUpdatedAt, now) : null}
+        consent={athlete.researchConsent}
+      />
 
       {notSaved.length > 0 && (
         <form action={addRecommended} className="flex flex-wrap items-center gap-3">

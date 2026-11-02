@@ -16,8 +16,8 @@ const INCH_MARKS = /["\u201C\u201D\u201F\u2033\u02BA\uFF02]/g;
  * text can't be read or falls outside [min, max] (defaults fit a player's height; pass a wider
  * range for standing reach and touches).
  */
-export function parseHeight(value: string | null | undefined, range: { min?: number; max?: number } = {}): number | null {
-  const { min = 48, max = 96 } = range;
+export function parseHeight(value: string | null | undefined, range: { min?: number; max?: number; step?: number } = {}): number | null {
+  const { min = 48, max = 96, step = 1 } = range;
   if (!value) return null;
   const s = value
     .trim()
@@ -44,12 +44,12 @@ export function parseHeight(value: string | null | undefined, range: { min?: num
   } else {
     return null;
   }
-  inches = Math.round(inches);
+  inches = Math.round(inches / step) * step;
   return inches >= min && inches <= max ? inches : null;
 }
 
-/** Standing reach, approach touch and block touch: 5' to 12'6". */
-export const REACH_RANGE = { min: 60, max: 150 };
+/** Standing reach, approach touch and block touch: 5' to 12'6", to the nearest half inch. */
+export const REACH_RANGE = { min: 60, max: 150, step: 0.5 };
 
 export function formatMoney(n: number | null | undefined): string {
   if (n == null) return "—";
