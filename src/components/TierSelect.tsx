@@ -6,7 +6,9 @@ import { TIERS } from "@/lib/tiers";
 /** Moves a school between the athlete's lists (Top choice, Main list, ...); saves on change. */
 export function TierSelect({ schoolId, tier, label }: { schoolId: number; tier: string; label: string }) {
   return (
-    <form action={setTier}>
+    // Keyed by the saved tier so the menu shows the new choice after saving (a form reset would
+    // otherwise snap it back to the tier it had when the page loaded).
+    <form action={setTier} key={tier}>
       <input type="hidden" name="schoolId" value={schoolId} />
       <select
         name="tier"
