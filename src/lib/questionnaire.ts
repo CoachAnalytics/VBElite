@@ -15,6 +15,8 @@ export type Question = {
   options?: Option[];
   optional?: boolean;
   placeholder?: string;
+  /** Only asked of athletes at these positions (e.g. setters). */
+  positions?: string[];
 };
 export type Step = { title: string; intro: string; questions: Question[] };
 
@@ -180,6 +182,18 @@ export const STEPS: Step[] = [
     intro: "What matters most in a college? These also set the weights on your Compare page.",
     questions: [
       { id: "wantPlayingTime", label: "Playing time early in college", kind: "choice", options: IMPORTANCE },
+      {
+        id: "setterSystem",
+        label: "As a setter: a 5-1 or a 6-2 offense?",
+        help: "In a 6-2, two setters play (each sets from the back row), so there are more chances for a setter to see the court. In a 5-1, one setter runs the offense in all six rotations.",
+        kind: "choice",
+        positions: ["S"],
+        options: [
+          { value: "6-2", label: "Prefer a 6-2", hint: "More setting opportunities to play" },
+          { value: "5-1", label: "Prefer a 5-1", hint: "She wants to run the whole offense" },
+          { value: "either", label: "No preference" },
+        ],
+      },
       { id: "wantWinning", label: "Competing for championships", kind: "choice", options: IMPORTANCE },
       { id: "wantAcademics", label: "Academic reputation", kind: "choice", options: IMPORTANCE },
       { id: "wantCost", label: "Keeping cost down", kind: "choice", options: IMPORTANCE },
@@ -220,7 +234,12 @@ export const STEPS: Step[] = [
   },
 ];
 
-export const QUESTION_COUNT = STEPS.reduce((n, s) => n + s.questions.length, 0);
+/** The steps with only the questions asked of an athlete at this position. */
+export function stepsFor(position: string | null | undefined): Step[] {
+  return STEPS.map((s) => ({ ...s, questions: s.questions.filter((q) => !q.positions || (position != null && q.positions.includes(position))) }));
+}
+
+export const questionCount = (position: string | null | undefined) => stepsFor(position).reduce((n, s) => n + s.questions.length, 0);
 
 const choice = (q: string[]) => z.enum(q as [string, ...string[]]);
 const opts = (id: string): string[] => STEPS.flatMap((s) => s.questions).find((q) => q.id === id)!.options!.map((o) => o.value);
@@ -243,6 +262,8 @@ export const answersSchema = z.object({
   gpa: choice(opts("gpa")),
   sat: z.number().int().min(400).max(1600).nullable(),
   wantPlayingTime: choice(opts("wantPlayingTime")),
+  // Setters only; absent in answers saved before it was added.
+  setterSystem: choice(opts("setterSystem")).optional(),
   wantWinning: choice(opts("wantWinning")),
   wantAcademics: choice(opts("wantAcademics")),
   wantCost: choice(opts("wantCost")),

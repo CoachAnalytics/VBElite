@@ -242,3 +242,31 @@ describe("offense in recommendations", () => {
     expect(opp.find((p) => p.school.id === 2)!.reasons.join(" ")).not.toMatch(/5-1/);
   });
 });
+
+describe("setter's 5-1 / 6-2 preference", () => {
+  it("ranks schools by the system she prefers", async () => {
+    const { recommend } = await import("./recommend");
+    const { programSummary } = await import("./analytics");
+    const base = {
+      slug: "x", conference: "A", city: null, state: "OH", control: "public", enrollment: 10000, latitude: null, longitude: null,
+      admissionRate: null, satAvg: null, tuitionInState: null, tuitionOutState: null, avgNetPrice: null,
+      program: programSummary([]), positionCovered: false, incomingAtPosition: 0,
+    };
+    const schools = [
+      { ...base, id: 1, name: "Two Setters U", offenseSystem: "6-2" },
+      { ...base, id: 2, name: "One Setter U", offenseSystem: "5-1" },
+    ];
+    const levels = new Map([[1, 2.0], [2, 2.0]]);
+    const estimate = { level: 2.0, low: 1.7, high: 2.3, label: "", drivers: [], belowD1: false, confirmedBy: null };
+    const answers = (setterSystem?: string) =>
+      ({ wantPlayingTime: "2", wantWinning: "1", wantAcademics: "1", wantCost: "1", maxDistance: "any", regions: [], size: "any", control: "any", sat: null, gpa: "3.5", setterSystem }) as never;
+    const setter = { position: "S", heightIn: 69, homeState: "OH", latitude: null, longitude: null };
+    const score = (pref: string | undefined, id: number) => recommend(schools, levels, estimate, answers(pref), setter).find((p) => p.school.id === id)!;
+    expect(score("5-1", 2).score).toBeGreaterThan(score("5-1", 1).score);
+    expect(score("5-1", 2).reasons.join(" ")).toMatch(/as she prefers/);
+    expect(score("6-2", 1).score).toBeGreaterThan(score("6-2", 2).score);
+    expect(score("either", 1).score).toBe(score("either", 2).score);
+    // No answer yet: a gentler lean toward the 6-2.
+    expect(score(undefined, 1).score).toBeGreaterThan(score(undefined, 2).score);
+  });
+});

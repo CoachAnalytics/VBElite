@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { saveQuestionnaire } from "@/app/actions";
 import { formatHeight, parseHeight, REACH_RANGE } from "@/lib/format";
-import { STEPS, type Answers, type Question } from "@/lib/questionnaire";
+import { STEPS, stepsFor, type Answers, type Question } from "@/lib/questionnaire";
 import { DataNotice } from "./DataNotice";
 
 type Draft = Record<string, string | string[]>;
@@ -68,7 +68,9 @@ function writeSaved(key: string, draft: Draft, step: number) {
   }
 }
 
-export function Questionnaire({ initial, athleteId }: { initial: Answers | null; athleteId: number }) {
+export function Questionnaire({ initial, athleteId, position }: { initial: Answers | null; athleteId: number; position: string }) {
+  // Only the questions for her position (e.g. the 5-1 / 6-2 question is for setters).
+  const steps = stepsFor(position);
   const key = draftKey(athleteId);
   const [state, action, pending] = useActionState(saveQuestionnaire, undefined);
   // Rendered only in the browser (see QuestionnaireLoader), so saved answers can be read here.
@@ -76,7 +78,7 @@ export function Questionnaire({ initial, athleteId }: { initial: Answers | null;
   const [step, setStepState] = useState(() => {
     if (!saved) return 0;
     const fromUrl = Number(new URLSearchParams(location.hash.slice(1)).get("step"));
-    return Math.min(STEPS.length - 1, Math.max(0, Number.isInteger(fromUrl) && fromUrl > 0 ? fromUrl - 1 : saved.step));
+    return Math.min(steps.length - 1, Math.max(0, Number.isInteger(fromUrl) && fromUrl > 0 ? fromUrl - 1 : saved.step));
   });
   const [draft, setDraft] = useState<Draft>(() => saved?.draft ?? toDraft(initial));
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export function Questionnaire({ initial, athleteId }: { initial: Answers | null;
     const onPop = (e: PopStateEvent) => {
       const n = e.state?.questionnaireStep;
       if (typeof n === "number") {
-        setStepState(Math.min(STEPS.length - 1, Math.max(0, n - 1)));
+        setStepState(Math.min(steps.length - 1, Math.max(0, n - 1)));
         setError(null);
       }
     };
@@ -105,8 +107,8 @@ export function Questionnaire({ initial, athleteId }: { initial: Answers | null;
     history.pushState({ ...history.state, questionnaireStep: n + 1 }, "", `#step=${n + 1}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const current = STEPS[step];
-  const last = step === STEPS.length - 1;
+  const current = steps[step];
+  const last = step === steps.length - 1;
   const set = (id: string, value: string | string[]) => {
     setDraft((d) => ({ ...d, [id]: value }));
     setError(null);
@@ -124,7 +126,7 @@ export function Questionnaire({ initial, athleteId }: { initial: Answers | null;
     if (history.state?.questionnaireStep === step + 1 && step > 0) history.back();
     else goTo(step - 1);
   };
-  const all = toAnswers(draft, STEPS.flatMap((s) => s.questions));
+  const all = toAnswers(draft, steps.flatMap((s) => s.questions));
 
   return (
     <form
@@ -148,10 +150,10 @@ export function Questionnaire({ initial, athleteId }: { initial: Answers | null;
       <div>
         <div className="flex items-baseline justify-between text-sm">
           <span className="font-medium">{current.title}</span>
-          <span className="text-ink-3">Step {step + 1} of {STEPS.length}</span>
+          <span className="text-ink-3">Step {step + 1} of {steps.length}</span>
         </div>
-        <div className="mt-2 h-1.5 rounded-full bg-surface-2" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}>
-          <div className="h-1.5 rounded-full bg-accent transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+        <div className="mt-2 h-1.5 rounded-full bg-surface-2" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1}>
+          <div className="h-1.5 rounded-full bg-accent transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
         </div>
         <p className="mt-3 text-sm text-ink-2">{current.intro}</p>
         {current.questions.some((q) => q.kind === "height") && <div className="mt-2"><DataNotice what="Reach and touch measurements" /></div>}

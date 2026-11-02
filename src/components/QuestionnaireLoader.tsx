@@ -9,6 +9,6 @@ const Questionnaire = dynamic(() => import("./Questionnaire").then((m) => m.Ques
   loading: () => <p className="text-sm text-ink-3">Loading…</p>,
 });
 
-export function QuestionnaireLoader({ initial, athleteId }: { initial: Answers | null; athleteId: number }) {
-  return <Questionnaire initial={initial} athleteId={athleteId} />;
+export function QuestionnaireLoader({ initial, athleteId, position }: { initial: Answers | null; athleteId: number; position: string }) {
+  return <Questionnaire initial={initial} athleteId={athleteId} position={position} />;
 }

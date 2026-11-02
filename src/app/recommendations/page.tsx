@@ -148,6 +148,22 @@ export default async function RecommendationsPage() {
         <Link href="/stats" className="text-accent-ink underline">{latestLine ? "Update stats" : "Add stats"}</Link>
       </section>
 
+      {athlete.position === "S" && (
+        <section className="card border-accent/40 p-4 text-sm">
+          <div className="font-medium">For setters: 5-1 or 6-2</div>
+          <p className="mt-1 text-ink-2">
+            Programs that run a 6-2 play two setters, so there are more setting opportunities to get on the court. Each school
+            below shows its offense from last season.{" "}
+            {answers?.setterSystem
+              ? answers.setterSystem === "either"
+                ? "You said you have no preference, so it doesn't change her list."
+                : `You said she prefers a ${answers.setterSystem}, so those programs rank higher.`
+              : "Tell us her preference in the questionnaire to rank programs by it."}{" "}
+            <Link href="/questionnaire#step=4" className="text-accent-ink underline">{answers?.setterSystem ? "Change it" : "Set her preference"}</Link>
+          </p>
+        </section>
+      )}
+
       {notSaved.length > 0 && (
         <form action={addRecommended} className="flex flex-wrap items-center gap-3">
           {notSaved.map((p) => <input key={p.school.id} type="hidden" name="pick" value={`${p.school.id}:${p.tier}`} />)}
@@ -180,6 +196,15 @@ export default async function RecommendationsPage() {
                           <div className="text-xs text-ink-3">
                             {[p.school.city, p.school.state].filter(Boolean).join(", ")} · {p.school.conference}
                           </div>
+                          {athlete.position === "S" && p.school.offenseSystem && (
+                            <span
+                              className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                                p.school.offenseSystem === "6-2" ? "bg-good/15 text-good" : "border border-line text-ink-2"
+                              }`}
+                            >
+                              {p.school.offenseSystem === "6-2" ? "6-2 · two setters play" : p.school.offenseSystem === "5-1" ? "5-1 · one setter" : "5-1 and 6-2"}
+                            </span>
+                          )}
                         </div>
                         {isSaved ? (
                           <span className="shrink-0 text-xs text-good">✓ On my list</span>

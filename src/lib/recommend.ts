@@ -317,17 +317,23 @@ export function recommend(
       );
     }
 
-    // Offense: a 6-2 puts two setters on the court, so setters weigh it like playing time.
+    // Offense: a 6-2 puts two setters on the court. Setters say which they prefer in the
+    // questionnaire; without an answer we lean gently toward a 6-2 (more setters play).
     if (athlete.position === "S" && s.offenseSystem) {
-      if (s.offenseSystem === "6-2") {
-        parts.push([1, w.playing * 0.5]);
-        reasons.push("Runs a 6-2: two setters play, so there's more setting time to go around.");
-      } else if (s.offenseSystem === "5-1") {
-        parts.push([0.3, w.playing * 0.5]);
-        reasons.push("Runs a 5-1: one setter plays all six rotations.");
+      const pref = a.setterSystem ?? null;
+      const describe =
+        s.offenseSystem === "6-2"
+          ? "Runs a 6-2: two setters play, so there's more setting time to go around"
+          : s.offenseSystem === "5-1"
+            ? "Runs a 5-1: one setter plays all six rotations"
+            : "Has used both a 5-1 and a 6-2";
+      if (pref === "either") {
+        reasons.push(`${describe}.`);
       } else {
-        parts.push([0.65, w.playing * 0.5]);
-        reasons.push("Has used both a 5-1 and a 6-2.");
+        const want = pref ?? "6-2";
+        const match = s.offenseSystem === want ? 1 : s.offenseSystem === "mixed" ? 0.6 : 0;
+        parts.push([match, pref ? w.playing : w.playing * 0.5]);
+        reasons.push(pref && match === 1 ? `${describe}, as she prefers.` : `${describe}.`);
       }
     } else if (athlete.position === "OPP" && s.offenseSystem === "6-2") {
       reasons.push("Runs a 6-2: the second setter usually plays opposite when in the back row.");
