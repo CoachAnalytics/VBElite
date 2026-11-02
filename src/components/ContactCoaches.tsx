@@ -31,33 +31,28 @@ export function ContactCoaches({
   const inbox = contacts.find((c) => c.role === "program" && c.email);
   const anyEmail = contacts.some((c) => c.email);
 
-  if (!anyEmail) {
-    return (
-      <section className="card space-y-3 p-4 text-sm">
-        <h2 className="text-lg font-semibold">Contact the coaches</h2>
-        <p className="text-ink-2">
-          We don&apos;t have {school.name}&apos;s coach emails yet.{" "}
-          {athleticsUrl && (
-            <>
-              Most programs list them on their{" "}
-              <a href={athleticsUrl} target="_blank" rel="noopener noreferrer" className="text-accent-ink underline">official athletics site ↗</a>.
-            </>
-          )}
-        </p>
-        <AddContact schoolId={school.id} schoolName={school.name} open />
-      </section>
-    );
-  }
-
   return (
     <section className="card space-y-4 p-4">
       <div>
         <h2 className="text-lg font-semibold">Contact the coaches</h2>
-        <p className="text-sm text-ink-2">
-          Tap Email to open a message with {athlete.name.split(" ")[0]}&apos;s intro already written. Fill in the [add] parts
-          before sending.
-        </p>
+        {anyEmail ? (
+          <p className="text-sm text-ink-2">
+            Tap Email to open a message with {athlete.name.split(" ")[0]}&apos;s intro already written. Fill in the [add] parts
+            before sending.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-2">
+            We don&apos;t have {school.name}&apos;s coach emails yet.{" "}
+            {athleticsUrl && (
+              <>
+                Most programs list them on their{" "}
+                <a href={athleticsUrl} target="_blank" rel="noopener noreferrer" className="text-accent-ink underline">official athletics site ↗</a>.
+              </>
+            )}
+          </p>
+        )}
       </div>
+      {anyEmail && (
       <ul className="divide-y divide-line rounded-lg border border-line">
         {contacts.map((c) => {
           // A coach without an address of their own is reached through the program inbox.
@@ -90,6 +85,7 @@ export function ContactCoaches({
           );
         })}
       </ul>
+      )}
       {opened && <LogEmail key={opened.key} schoolId={school.id} contact={opened} onDone={() => setOpened(null)} />}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3">
         {questionnaire && (
@@ -97,22 +93,26 @@ export function ContactCoaches({
             Fill out the recruiting questionnaire ↗
           </a>
         )}
+        {contacts.some((c) => c.email && !c.added) && (
         <span>
           From the program&apos;s public staff listing{checkedAt && `, checked ${new Date(checkedAt).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}`}.
           Staff change; if an email bounces, check{" "}
           {source ? <a href={source} target="_blank" rel="noopener noreferrer" className="underline">the coaches page</a> : "the athletics site"}.
         </span>
+        )}
       </div>
-      <AddContact schoolId={school.id} schoolName={school.name} />
+      <AddContact schoolId={school.id} schoolName={school.name} startOpen={!anyEmail} />
     </section>
   );
 }
 
 /** A form for a coach email the family found (a reply from a coach, a camp, the website). */
-function AddContact({ schoolId, schoolName, open = false }: { schoolId: number; schoolName: string; open?: boolean }) {
+function AddContact({ schoolId, schoolName, startOpen }: { schoolId: number; schoolName: string; startOpen: boolean }) {
   const [state, action, pending] = useActionState(submitContact, undefined);
+  // Open state lives here so the thank-you stays visible when the list above changes.
+  const [open, setOpen] = useState(startOpen);
   return (
-    <details open={open || undefined} className="rounded-lg border border-line">
+    <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="rounded-lg border border-line">
       <summary className="cursor-pointer px-3 py-2 text-sm font-medium">+ Add a coach email you have</summary>
       <form action={action} key={state?.at ?? 0} className="space-y-3 border-t border-line p-3 text-sm">
         <p className="text-xs text-ink-3">
