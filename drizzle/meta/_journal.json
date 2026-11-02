@@ -43,6 +43,13 @@
       "when": 1793628970678,
       "tag": "0005_athlete_questionnaire",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793632349967,
+      "tag": "0006_coach_confirmations",
+      "breakpoints": true
     }
   ]
 }

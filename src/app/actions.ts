@@ -2,12 +2,15 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { createSession, destroySession, requireUser } from "@/lib/auth";
 import { parseHeight } from "@/lib/format";
 import { answersSchema, STEPS } from "@/lib/questionnaire";
+import { COACH_ROLES, responseSchema } from "@/lib/coach";
+import { createCoachLink, saveCoachResponse } from "@/lib/coachLinks";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { POSITIONS } from "@/lib/positions";
@@ -208,4 +211,49 @@ export async function addRecommended(form: FormData) {
     .values(picks.map((p) => ({ athleteId: athlete.id, schoolId: p.schoolId, tier: p.tier })))
     .onConflictDoNothing();
   revalidatePath("/", "layout");
+}
+
+export type CoachLinkState = { error?: string; url?: string; coachName?: string } | undefined;
+
+const coachLinkForm = z.object({
+  coachName: z.string().trim().min(2, "Enter the coach's name").max(80),
+  coachRole: z.enum(COACH_ROLES.map((r) => r.value) as [string, ...string[]]),
+});
+
+/** Creates a confirmation link the athlete sends her coach (by text or email, from her own phone). */
+export async function createCoachConfirmation(_: CoachLinkState, form: FormData): Promise<CoachLinkState> {
+  const athlete = await requireAthlete();
+  const parsed = coachLinkForm.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const token = await createCoachLink(athlete.id, parsed.data.coachName, parsed.data.coachRole);
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  revalidatePath("/recommendations");
+  revalidatePath("/profile");
+  return { url: `${proto}://${host}/coach/${token}`, coachName: parsed.data.coachName };
+}
+
+export type CoachResponseState = { error?: string; done?: boolean } | undefined;
+
+/** A coach's answers through a confirmation link. No account needed: the link is the permission. */
+export async function submitCoachResponse(_: CoachResponseState, form: FormData): Promise<CoachResponseState> {
+  const token = String(form.get("token") ?? "");
+  const heightText = String(form.get("height") ?? "").trim();
+  const heightIn = form.get("heightRight") === "no" ? parseHeight(heightText) : null;
+  if (form.get("heightRight") === "no" && heightIn == null) {
+    return { error: `Couldn't read the height "${heightText}". Try 5'10" or 70.` };
+  }
+  const parsed = responseSchema.safeParse({
+    coachName: form.get("coachName"),
+    club: form.get("club") ?? "",
+    level: form.get("level"),
+    role: form.get("role"),
+    heightIn,
+    note: form.get("note") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const ok = await saveCoachResponse(token, parsed.data);
+  if (!ok) return { error: "This link has already been answered or has expired. Ask the athlete to send a new one." };
+  return { done: true };
 }

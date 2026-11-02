@@ -12,6 +12,7 @@ import type { ProgramSummary } from "./analytics";
 import type { Weights } from "./analytics";
 import { postseasonRank } from "./analytics";
 import { milesBetween } from "./distance";
+import type { CoachConfirmation } from "./coach";
 import { regionOf, type Answers } from "./questionnaire";
 
 const POWER_CONFERENCES = ["Southeastern Conference", "Big Ten Conference", "Big 12 Conference", "Atlantic Coast Conference"];
@@ -136,6 +137,8 @@ export type LevelEstimate = {
   drivers: string[];
   /** The estimate points mostly below D1, which isn't covered yet. */
   belowD1: boolean;
+  /** Set when a coach confirmed her level through a confirmation link. */
+  confirmedBy: { coachName: string; respondedAt: Date } | null;
 };
 
 export function levelLabel(level: number): string {
@@ -151,32 +154,60 @@ export function levelPhrase(level: number): string {
   return label.startsWith("D") ? label : label[0].toLowerCase() + label.slice(1);
 }
 
-export function estimateLevel(a: Answers, athlete: AthleteBasics, benchmarks: HeightBenchmarks): LevelEstimate {
-  const coach = COACH[a.coachProjection];
-  const club = clamp(
-    DIVISION[a.clubDivision] + FINISH[a.clubFinish] + ROLE[a.clubRole] + HS[a.hsRole] + CONTACT[a.contact],
-  );
-  const height = heightLevel(athlete.heightIn, benchmarks);
+const shortDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+/**
+ * Her level from the questionnaire. A coach's confirmation, when there is one, replaces
+ * the self-reported coach projection, club role and height, and narrows the range.
+ */
+export function estimateLevel(
+  a: Answers,
+  athlete: AthleteBasics,
+  benchmarks: HeightBenchmarks,
+  confirmation: CoachConfirmation | null = null,
+): LevelEstimate {
+  const coach = confirmation ? COACH[confirmation.level] : COACH[a.coachProjection];
+  const role = ROLE[confirmation?.role ?? a.clubRole];
+  const club = clamp(DIVISION[a.clubDivision] + FINISH[a.clubFinish] + role + HS[a.hsRole] + CONTACT[a.contact]);
+  const heightIn = confirmation?.heightIn ?? athlete.heightIn;
+  const height = heightLevel(heightIn, benchmarks);
   // Height matters less for setters and liberos.
   const heightWeight = athlete.position === "LDS" || athlete.position === "S" ? 0.1 : 0.2;
+  const coachWeight = confirmation ? 0.55 : 0.45;
 
   const parts: [number, number][] = [
-    ...(coach != null ? ([[coach, 0.45]] as [number, number][]) : []),
+    ...(coach != null ? ([[coach, coachWeight]] as [number, number][]) : []),
     [club, coach != null ? 0.35 : 0.65],
     ...(height != null ? ([[height, heightWeight]] as [number, number][]) : []),
   ];
   const weight = parts.reduce((n, [, w]) => n + w, 0);
   const level = clamp(parts.reduce((n, [v, w]) => n + v * w, 0) / weight);
-  const spread = coach != null ? 0.35 : 0.55;
+  const spread = confirmation ? 0.25 : coach != null ? 0.35 : 0.55;
 
   const drivers: string[] = [];
-  if (coach != null) drivers.push(`Her coach projects her at ${levelPhrase(coach)}.`);
-  else drivers.push("No coach projection yet, so the range is wider. Ask her club coach and retake this.");
+  if (confirmation) {
+    drivers.push(`${confirmation.coachName} confirmed on ${shortDate(confirmation.respondedAt)} that she can play ${levelPhrase(coach!)}.`);
+    if (confirmation.heightIn != null && confirmation.heightIn !== athlete.heightIn) {
+      drivers.push(`Her coach corrected her height to ${Math.floor(confirmation.heightIn / 12)}'${confirmation.heightIn % 12}".`);
+    }
+  } else if (coach != null) {
+    drivers.push(`Her coach projects her at ${levelPhrase(coach)} (not yet confirmed by the coach).`);
+  } else {
+    drivers.push("No coach projection yet, so the range is wider. Send her coach a confirmation link below.");
+  }
   drivers.push(`Her club level and playing role point to ${levelPhrase(club)}.`);
   if (height != null) {
     drivers.push(`Her height is typical of ${levelPhrase(height)} players at her position.`);
   }
-  return { level, low: clamp(level - spread), high: clamp(level + spread), label: levelLabel(level), drivers, belowD1: level < 1 };
+  return {
+    level,
+    low: clamp(level - spread),
+    high: clamp(level + spread),
+    label: levelLabel(level),
+    drivers,
+    belowD1: level < 1,
+    confirmedBy: confirmation ? { coachName: confirmation.coachName, respondedAt: confirmation.respondedAt } : null,
+  };
 }
 
 // ---------- Recommendations ----------

@@ -125,6 +125,26 @@ describe("estimateLevel", () => {
     expect(without.drivers[0]).toMatch(/No coach projection/);
   });
 
+  it("uses a coach's confirmation over self-reported answers, with a narrower range", () => {
+    const confirmation = {
+      level: "high",
+      role: "starter-all",
+      coachName: "Coach Test",
+      coachRole: "club",
+      club: "Test VBC",
+      heightIn: 74,
+      respondedAt: new Date("2026-11-01"),
+    };
+    const self = estimateLevel(answers({ coachProjection: "mid" }), athlete, noHeights);
+    const confirmed = estimateLevel(answers({ coachProjection: "mid" }), athlete, { low: 70, mid: 72, high: 74 }, confirmation);
+    expect(confirmed.level).toBeGreaterThan(self.level);
+    expect(confirmed.high - confirmed.low).toBeLessThan(self.high - self.low);
+    expect(confirmed.confirmedBy?.coachName).toBe("Coach Test");
+    expect(confirmed.drivers[0]).toMatch(/Coach Test confirmed/);
+    expect(confirmed.drivers[1]).toMatch(/corrected her height to 6'2"/);
+    expect(self.confirmedBy).toBeNull();
+  });
+
   it("counts height against players at her position", () => {
     const benchmarks = { low: 70, mid: 72, high: 74 };
     const tall = estimateLevel(answers(), { ...athlete, heightIn: 76 }, benchmarks);

@@ -5,6 +5,8 @@ import { positionLabel } from "@/lib/positions";
 import { parseAnswers } from "@/lib/questionnaire";
 import { estimateLevel, heightBenchmarks, levelPhrase, programLevels, recommend, type Tier } from "@/lib/recommend";
 import { getRecommendationData, getSavedSchools, requireOnboarded } from "@/lib/queries";
+import { latestConfirmation } from "@/lib/coachLinks";
+import { CoachConfirmSection } from "@/components/CoachConfirmSection";
 
 const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
   reach: { title: "Reach", blurb: "Stronger programs than her estimated level. Worth contacting, but expect a tougher path to a roster spot." },
@@ -15,9 +17,10 @@ const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
 export default async function RecommendationsPage() {
   const { athlete } = await requireOnboarded();
   const answers = parseAnswers(athlete.questionnaire);
-  const [{ schools, players }, saved] = await Promise.all([
+  const [{ schools, players }, saved, confirmation] = await Promise.all([
     getRecommendationData(athlete.position, athlete.gradYear),
     getSavedSchools(athlete.id),
+    latestConfirmation(athlete.id),
   ]);
   const savedIds = new Set(saved.map((s) => s.schoolId));
   const levels = programLevels(schools);
@@ -29,7 +32,7 @@ export default async function RecommendationsPage() {
     latitude: athlete.latitude,
     longitude: athlete.longitude,
   };
-  const estimate = answers ? estimateLevel(answers, basics, benchmarks) : null;
+  const estimate = answers ? estimateLevel(answers, basics, benchmarks, confirmation) : null;
   const picks = answers && estimate ? recommend(schools, levels, estimate, answers, basics) : [];
   const first = athlete.name.split(" ")[0];
   const notSaved = picks.filter((p) => !savedIds.has(p.school.id));
@@ -49,7 +52,14 @@ export default async function RecommendationsPage() {
 
       {estimate && (
         <section className="card space-y-3 p-5">
-          <div className="text-xs uppercase tracking-wide text-ink-3">Estimated level</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs uppercase tracking-wide text-ink-3">Estimated level</div>
+            {estimate.confirmedBy ? (
+              <span className="rounded-full bg-good/10 px-2.5 py-0.5 text-xs font-medium text-good">✓ Coach confirmed</span>
+            ) : (
+              <a href="#coach" className="text-xs text-accent-ink underline">Get it confirmed by her coach</a>
+            )}
+          </div>
           <div className="text-2xl font-semibold">{estimate.label}</div>
           <p className="text-sm text-ink-2">
             Range:{" "}
@@ -134,6 +144,8 @@ export default async function RecommendationsPage() {
           </section>
         );
       })}
+
+      <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />
 
       <p className="text-sm text-ink-2">
         Want to look further? <Link href="/schools" className="text-accent-ink underline">Browse all 348 D1 schools</Link> or{" "}

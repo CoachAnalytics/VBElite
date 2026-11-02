@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { getAthlete } from "@/lib/queries";
 import { AthleteForm } from "@/components/AthleteForm";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
+import { CoachConfirmSection } from "@/components/CoachConfirmSection";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -30,6 +31,7 @@ export default async function ProfilePage() {
           </div>
         </section>
       )}
+      {athlete?.questionnaireAt && <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />}
       <p className="text-sm text-ink-3">Signed in as {user.email}</p>
       <ChangePasswordForm />
     </div>

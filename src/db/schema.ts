@@ -176,6 +176,26 @@ export const savedSchools = pgTable(
   (t) => [primaryKey({ columns: [t.athleteId, t.schoolId] })],
 );
 
+// A link an athlete sends her club or high school coach to confirm her level. The coach
+// answers without an account; the response refines the questionnaire's estimate.
+export const coachConfirmations = pgTable("coach_confirmations", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  // SHA-256 of the link's token; the raw token is only ever in the link itself
+  tokenHash: text("token_hash").notNull().unique(),
+  // Who the athlete sent it to, as she entered it
+  coachName: text("coach_name").notNull(),
+  // club | director | high-school | other
+  coachRole: text("coach_role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+  // The coach's answers (JSON, see src/lib/coach.ts)
+  response: text("response"),
+});
+
 // One row per attempt to pull schools.json.gz from the private data repo (daily cron or "Sync now").
 export const dataSyncs = pgTable("data_syncs", {
   id: serial("id").primaryKey(),
