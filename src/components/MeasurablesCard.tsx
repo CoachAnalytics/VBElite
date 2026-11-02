@@ -71,43 +71,31 @@ export function MeasurablesCard({
           Add her height on her <Link href="/profile" className="text-accent-ink underline">profile</Link> to see this.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[460px] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-ink-3">
-                <th className="py-2 pr-3 font-medium">Measurable</th>
-                <th className="py-2 pr-3 font-medium">Now</th>
-                <th className="py-2 pr-3 font-medium">For her age</th>
-                <th className="py-2 font-medium">Projected at 18</th>
-              </tr>
-            </thead>
-            <tbody>
-              {views.map((v) => (
-                <tr key={v.key} className="border-b border-line align-top last:border-0">
-                  <td className="py-2 pr-3 font-medium">{v.label}</td>
-                  <td className="tabular py-2 pr-3">
-                    {v.estimated ? "≈" : ""}
-                    {feetInches(v.nowIn)}
-                    {v.estimated && <div className="text-xs text-ink-3">from her height</div>}
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className="font-medium">{pctText(v.elitePct)}</span>
-                    <span className="text-ink-3"> of elite {pos}s</span>
-                    {v.cdcPct != null && (
-                      <div className="text-xs text-ink-3">Taller than {v.cdcPct >= 99.5 ? "99%+" : `${Math.round(v.cdcPct)}%`} of U.S. girls her age</div>
-                    )}
-                  </td>
-                  <td className="tabular py-2">
-                    <span className="font-medium">{feetInches(v.projectedIn.mid)}</span>
-                    <div className="text-xs text-ink-3">
-                      {feetInches(v.projectedIn.low)} – {feetInches(v.projectedIn.high)}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="divide-y divide-line rounded-lg border border-line">
+          {views.map((v) => (
+            <li key={v.key} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
+              <div className="font-medium">{v.label}</div>
+              <div className="tabular text-right font-semibold">
+                {v.estimated ? "≈" : ""}
+                {feetInches(v.nowIn)}
+              </div>
+              <div className="text-ink-2">
+                <span className="font-medium text-ink">{pctText(v.elitePct)}</span> of elite {pos}s her age
+                {v.cdcPct != null && (
+                  <span className="text-ink-3"> · taller than {v.cdcPct >= 99.5 ? "99%+" : `${Math.round(v.cdcPct)}%`} of U.S. girls her age</span>
+                )}
+                {v.estimated && <span className="text-ink-3"> · estimated from her height</span>}
+              </div>
+              <div className="tabular text-right text-ink-2">
+                <span className="text-xs text-ink-3">At 18 </span>
+                <span className="font-medium text-ink">{feetInches(v.projectedIn.mid)}</span>
+                <div className="text-xs text-ink-3">
+                  {feetInches(v.projectedIn.low)}–{feetInches(v.projectedIn.high)}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
       {height && commitPct != null && (
@@ -128,26 +116,27 @@ export function MeasurablesCard({
         <details className="rounded-lg border border-line">
           <summary className="cursor-pointer px-3 py-2 text-sm font-medium">What D1 {pos}s measure, by level</summary>
           <div className="overflow-x-auto border-t border-line p-3">
-            <table className="w-full min-w-[460px] text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-3">
                   <th className="py-1 pr-3 font-medium" />
-                  {college.map((c) => <th key={c.label} className="py-1 pr-3 font-medium">{c.label}</th>)}
+                  {college.map((c) => <th key={c.label} className="py-1 pr-2 font-medium">{c.label}</th>)}
                   <th className="py-1 font-medium">{first} at 18</th>
                 </tr>
               </thead>
               <tbody>
                 {collegeRows.map((r) => (
                   <tr key={r.key} className="border-t border-line">
-                    <td className="py-1.5 pr-3">{r.label}</td>
-                    {college.map((c) => <td key={c.label} className="tabular py-1.5 pr-3">{feetInches(c.values[r.key])}</td>)}
+                    <td className="py-1.5 pr-2">{r.label}</td>
+                    {college.map((c) => <td key={c.label} className="tabular py-1.5 pr-2">{feetInches(c.values[r.key])}</td>)}
                     <td className="tabular py-1.5 font-medium">{projected[r.key] != null ? feetInches(projected[r.key]!) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="mt-2 text-xs text-ink-3">
-              Heights are the average for her position on current D1 rosters at each level. Reach and touches are VB Elite
+              Lower = lower-conference D1, Mid = mid-level D1, Top = top D1 programs. Heights are the average for her position on
+              current D1 rosters at each level. Reach and touches are VB Elite
               estimates from those heights and published college testing; no source reports touches by D1 level.
             </p>
           </div>

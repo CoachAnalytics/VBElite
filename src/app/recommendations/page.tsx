@@ -51,9 +51,9 @@ export default async function RecommendationsPage() {
   const views = ageAdjusted(measurables, age, athlete.position);
   const projectedOf = (k: string) => views.find((v) => v.key === k)?.projectedIn.mid ?? null;
   const bandHeights = [
-    { label: "Lower-conference", h: benchmarks.low },
-    { label: "Mid-level", h: benchmarks.mid },
-    { label: "Top D1", h: benchmarks.high },
+    { label: "Lower", h: benchmarks.low },
+    { label: "Mid", h: benchmarks.mid },
+    { label: "Top", h: benchmarks.high },
   ];
   const college: CollegeBand[] = bandHeights
     .filter((b): b is { label: string; h: number } => b.h != null)
