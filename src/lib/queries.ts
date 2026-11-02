@@ -263,7 +263,7 @@ export async function lastMeasuredAt(athleteId: number): Promise<Date | null> {
 }
 
 /**
- * VB Elite's own dataset, opted-in athletes only, without names or contact details: every
+ * VB Elite's own dataset (athletes who haven't opted out), without names or contact details: every
  * measurement snapshot and every offer/commitment snapshot.
  */
 export async function researchDataset() {

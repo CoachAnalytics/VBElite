@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { setResearchConsent } from "@/app/actions";
 import type { MetricKey, MetricView } from "@/lib/development";
 import { positionLabel } from "@/lib/positions";
 
@@ -151,24 +150,12 @@ export function MeasurablesCard({
         </p>
       )}
 
-      <form action={setResearchConsent} className="rounded-lg bg-surface-2 p-3 text-sm">
-        <input type="hidden" name="consent" value={consent ? "no" : "yes"} />
-        {consent ? (
-          <p className="text-ink-2">
-            ✓ {first}&apos;s measurements and offers help build VB Elite&apos;s own age-by-position norms (anonymously, without her name
-            or contact details).{" "}
-            <button className="text-accent-ink underline">Turn off</button>
-          </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="flex-1 text-ink-2">
-              Help build better projections: include {first}&apos;s measurements and offers, without her name or contact details, in
-              VB Elite&apos;s anonymous statistics. Every family who joins makes the comparisons more accurate.
-            </p>
-            <button className="btn-secondary px-3 py-1.5 text-sm">Include her anonymously</button>
-          </div>
-        )}
-      </form>
+      <p className="text-xs text-ink-3">
+        {consent
+          ? `${first}'s measurements and offers are included, without her name or contact details, in VB Elite's anonymous statistics, which will replace these European estimates with our own as data grows. `
+          : `${first}'s data is not included in VB Elite's anonymous statistics. `}
+        <Link href="/profile#data" className="underline">{consent ? "Opt out" : "Change"} on her profile</Link>.
+      </p>
 
       <details className="text-xs text-ink-3">
         <summary className="cursor-pointer">How this is calculated</summary>

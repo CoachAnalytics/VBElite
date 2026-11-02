@@ -197,9 +197,10 @@ export const athletes = pgTable("athletes", {
   // Month and year only (no full birth date): her age drives the age-adjusted comparisons.
   birthYear: integer("birth_year"),
   birthMonth: integer("birth_month"),
-  // Opt-in: include her measurements and offers (no name or contact details) in VB Elite's
-  // anonymous statistics, used to build age-by-position norms and projections.
-  researchConsent: boolean("research_consent").notNull().default(false),
+  // Included by default (with a notice where data is entered): her measurements and offers,
+  // without name or contact details, count in VB Elite's anonymous statistics. False when the
+  // family opted out on her profile; researchConsentAt is when they last changed it.
+  researchConsent: boolean("research_consent").notNull().default(true),
   researchConsentAt: timestamp("research_consent_at", { withTimezone: true }),
   homeZip: text("home_zip").notNull(),
   homeCity: text("home_city"),

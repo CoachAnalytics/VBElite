@@ -121,7 +121,7 @@ export default async function AdminPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Data we&apos;re building</h2>
         <p className="max-w-2xl text-sm text-ink-2">
-          {consented.n} athletes have opted in. Their measurement snapshots and offer/commit snapshots (frozen when logged, with
+          {consented.n} athletes are included ({athletes.n - consented.n} opted out). Their measurement snapshots and offer/commit snapshots (frozen when logged, with
           her age, measurables, club level and the program&apos;s level) build VB Elite&apos;s own norms. Each cell is athletes
           measured at that position and age group; at {NORM_TARGET} a cell has enough to replace the published European
           estimates.
@@ -158,7 +158,7 @@ export default async function AdminPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-ink-3">Downloads include opted-in athletes only, with pseudonyms (A1, A2…) instead of names or accounts.</p>
+        <p className="text-xs text-ink-3">Downloads leave out athletes who opted out, and use pseudonyms (A1, A2…) instead of names or accounts.</p>
       </section>
 
       <section className="space-y-3">

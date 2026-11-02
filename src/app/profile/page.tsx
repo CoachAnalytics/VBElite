@@ -4,6 +4,7 @@ import { getAthlete } from "@/lib/queries";
 import { AthleteForm } from "@/components/AthleteForm";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { CoachConfirmSection } from "@/components/CoachConfirmSection";
+import { setResearchConsent } from "../actions";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -42,6 +43,20 @@ export default async function ProfilePage() {
         </section>
       )}
       {athlete?.questionnaireAt && <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />}
+      {athlete && (
+        <section id="data" className="card space-y-2 p-5 text-sm">
+          <h2 className="font-medium">Anonymous statistics</h2>
+          <p className="text-ink-2">
+            {athlete.researchConsent
+              ? `${athlete.name.split(" ")[0]}'s measurements and recruiting results (offers and commitments) are included in VB Elite's anonymous statistics, without her name, email or other contact details. They help build age-by-position norms and more accurate projections for every athlete.`
+              : `${athlete.name.split(" ")[0]}'s data is not included in VB Elite's anonymous statistics. Her own comparisons and projections work the same either way.`}
+          </p>
+          <form action={setResearchConsent}>
+            <input type="hidden" name="consent" value={athlete.researchConsent ? "no" : "yes"} />
+            <button className="btn-secondary px-3 py-1.5 text-sm">{athlete.researchConsent ? "Opt out" : "Include her data again"}</button>
+          </form>
+        </section>
+      )}
       <p className="text-sm text-ink-3">Signed in as {user.email}</p>
       <ChangePasswordForm />
     </div>

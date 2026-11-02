@@ -370,13 +370,13 @@ export async function submitContact(_: ContactFormState, form: FormData): Promis
   return { ok: true, at: Date.now() };
 }
 
-/** Turns her opt-in to VB Elite's anonymous statistics on or off. */
+/** Opts her out of (or back into) VB Elite's anonymous statistics; included by default. */
 export async function setResearchConsent(form: FormData) {
   const athlete = await requireAthlete();
   const on = form.get("consent") === "yes";
   await db
     .update(schema.athletes)
-    .set({ researchConsent: on, researchConsentAt: on ? new Date() : null })
+    .set({ researchConsent: on, researchConsentAt: new Date() })
     .where(eq(schema.athletes.id, athlete.id));
   revalidatePath("/", "layout");
 }

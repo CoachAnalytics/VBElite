@@ -3,6 +3,7 @@
 import { useActionState, useId, useState } from "react";
 import { addRecruitingEvent } from "@/app/actions";
 import { EVENT_TYPES } from "@/lib/recruiting";
+import { DataNotice } from "./DataNotice";
 
 type School = { id: number; name: string };
 
@@ -85,6 +86,7 @@ function EventFields({
       </div>
       {state?.error && <p className="text-sm text-bad" role="alert">{state.error}</p>}
       {state?.ok && <p className="text-sm text-good" role="status">Saved.</p>}
+      {!fixed && <DataNotice what="Offers and commitments" />}
       <button className="btn-primary" disabled={pending || !match}>{pending ? "Saving…" : "Add to log"}</button>
     </form>
   );

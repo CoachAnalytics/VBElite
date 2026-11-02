@@ -5,6 +5,7 @@ import { saveAthlete } from "@/app/actions";
 import type { Athlete } from "@/db/schema";
 import { formatHeight } from "@/lib/format";
 import { POSITIONS } from "@/lib/positions";
+import { DataNotice } from "./DataNotice";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -83,6 +84,7 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
           )}
         </div>
       </div>
+      <DataNotice what="Height, age and position" />
       {state?.error && <p className="text-sm text-bad" role="alert">{state.error}</p>}
       {state?.ok && <p className="text-sm text-good" role="status">Saved.</p>}
       <button type="submit" disabled={pending} className="btn-primary">

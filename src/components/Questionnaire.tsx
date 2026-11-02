@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { saveQuestionnaire } from "@/app/actions";
 import { formatHeight, parseHeight, REACH_RANGE } from "@/lib/format";
 import { STEPS, type Answers, type Question } from "@/lib/questionnaire";
+import { DataNotice } from "./DataNotice";
 
 type Draft = Record<string, string | string[]>;
 
@@ -77,6 +78,7 @@ export function Questionnaire({ initial }: { initial: Answers | null }) {
           <div className="h-1.5 rounded-full bg-accent transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
         </div>
         <p className="mt-3 text-sm text-ink-2">{current.intro}</p>
+        {current.questions.some((q) => q.kind === "height") && <div className="mt-2"><DataNotice what="Reach and touch measurements" /></div>}
       </div>
 
       {current.questions.map((q) => (
