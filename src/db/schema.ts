@@ -140,6 +140,29 @@ export const schoolContacts = pgTable("school_contacts", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
+// A coach email an athlete's family added. Shown to them right away; shown to everyone once
+// an admin approves it. Kept apart from school_contacts so data syncs never overwrite it.
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name"),
+  title: text("title"),
+  // program | head | recruiting | assistant | operations
+  role: text("role").notNull(),
+  email: text("email").notNull(),
+  // Where the family got it: coach-email | website | camp | other
+  source: text("source").notNull(),
+  // pending | approved | rejected
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+});
+
 // ---------- Accounts ----------
 
 export const users = pgTable("users", {

@@ -111,3 +111,17 @@ export async function removeAdmin(form: FormData) {
     .where(and(eq(schema.users.id, userId), ne(schema.users.id, me.id)));
   revalidatePath("/admin");
 }
+
+/** Approves or rejects a coach email a family added. */
+export async function reviewContact(form: FormData) {
+  await requireAdmin();
+  const id = Number(form.get("id"));
+  const status = String(form.get("status"));
+  if (!Number.isInteger(id) || (status !== "approved" && status !== "rejected")) return;
+  await db
+    .update(schema.contactSubmissions)
+    .set({ status, reviewedAt: new Date() })
+    .where(eq(schema.contactSubmissions.id, id));
+  revalidatePath("/admin");
+  revalidatePath("/schools/[slug]", "page");
+}

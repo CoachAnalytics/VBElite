@@ -6,7 +6,9 @@ import { ImportForm } from "@/components/ImportForm";
 import { AddAdminForm } from "@/components/AddAdminForm";
 import { SyncButton } from "@/components/SyncButton";
 import { dataRepo, syncConfigured } from "@/lib/sync";
-import { removeAdmin, syncNow } from "./actions";
+import { removeAdmin, reviewContact, syncNow } from "./actions";
+import { pendingContactSubmissions } from "@/lib/queries";
+import { CONTACT_SOURCES, onSchoolDomain, ROLE_LABEL } from "@/lib/coachEmail";
 
 // Uploads and "Sync now" load every school, which can take a minute or two.
 export const maxDuration = 300;
@@ -48,6 +50,7 @@ export default async function AdminPage() {
   const fmtTime = (d: Date) =>
     new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   const configured = syncConfigured();
+  const submissions = await pendingContactSubmissions();
 
   return (
     <div className="space-y-8">
@@ -57,6 +60,54 @@ export default async function AdminPage() {
           {users.n} accounts · {athletes.n} athlete profiles
         </p>
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Coach emails from families {submissions.length > 0 && <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-contrast">{submissions.length} to review</span>}</h2>
+        <p className="max-w-2xl text-sm text-ink-2">
+          Families can add coach emails on school pages. They see their own right away; approve one to show it to everyone.
+          An address off the school&apos;s own domain (like Gmail) deserves a closer look.
+        </p>
+        {submissions.length === 0 ? (
+          <p className="text-sm text-ink-3">Nothing waiting.</p>
+        ) : (
+          <ul className="card divide-y divide-line">
+            {submissions.map((x) => {
+              const official = onSchoolDomain(x.email, [x.website, x.athleticsWebsite]);
+              return (
+                <li key={x.id} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
+                  <div className="min-w-0">
+                    <div>
+                      <Link href={`/schools/${x.schoolSlug}`} className="font-medium hover:underline">{x.schoolName}</Link>
+                      {" · "}{x.name ?? "Team inbox"} ({x.title || ROLE_LABEL[x.role]})
+                    </div>
+                    <div className="break-all">
+                      {x.email}{" "}
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${official ? "bg-good/15 text-good" : "bg-bad/10 text-bad"}`}>
+                        {official ? "school domain" : "not a school domain"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-ink-3">
+                      {CONTACT_SOURCES.find((s) => s.value === x.source)?.label} · from {x.submittedBy} · {fmt(x.createdAt)}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <form action={reviewContact}>
+                      <input type="hidden" name="id" value={x.id} />
+                      <input type="hidden" name="status" value="approved" />
+                      <button className="btn-primary px-3 py-1 text-sm">Approve</button>
+                    </form>
+                    <form action={reviewContact}>
+                      <input type="hidden" name="id" value={x.id} />
+                      <input type="hidden" name="status" value="rejected" />
+                      <button className="btn-secondary px-3 py-1 text-sm">Reject</button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Automatic updates</h2>

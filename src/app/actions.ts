@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -11,6 +11,7 @@ import { parseHeight } from "@/lib/format";
 import { answersSchema, STEPS } from "@/lib/questionnaire";
 import { COACH_ROLES, responseSchema } from "@/lib/coach";
 import { eventSchema } from "@/lib/recruiting";
+import { CONTACT_SOURCES } from "@/lib/coachEmail";
 import { createCoachLink, saveCoachResponse } from "@/lib/coachLinks";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -296,4 +297,53 @@ export async function deleteRecruitingEvent(form: FormData) {
     .delete(schema.recruitingEvents)
     .where(and(eq(schema.recruitingEvents.id, id), eq(schema.recruitingEvents.athleteId, athlete.id)));
   revalidatePath("/", "layout");
+}
+
+// ---------- Coach emails families add ----------
+
+const contactSchema = z
+  .object({
+    schoolId: z.coerce.number().int().positive(),
+    role: z.enum(["program", "head", "recruiting", "assistant", "operations"], { message: "Choose who this email is for" }),
+    name: z.string().trim().max(80),
+    title: z.string().trim().max(120),
+    email: z.string().trim().toLowerCase().email("Enter a full email address, like coach@school.edu").max(200),
+    source: z.enum(CONTACT_SOURCES.map((x) => x.value) as [string, ...string[]], { message: "Tell us where you got it" }),
+  })
+  .refine((d) => d.role === "program" || d.name.length > 0, { message: "Enter the coach's name", path: ["name"] });
+
+export type ContactFormState = { error?: string; ok?: boolean; at?: number } | undefined;
+
+/** Saves a coach email a family found. They see it right away; everyone else once an admin approves it. */
+export async function submitContact(_: ContactFormState, form: FormData): Promise<ContactFormState> {
+  const user = await requireUser();
+  const parsed = contactSchema.safeParse({
+    schoolId: form.get("schoolId"),
+    role: form.get("role"),
+    name: form.get("name") ?? "",
+    title: form.get("title") ?? "",
+    email: form.get("email") ?? "",
+    source: form.get("source"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+  const [school] = await db.select({ id: schema.schools.id }).from(schema.schools).where(eq(schema.schools.id, d.schoolId));
+  if (!school) return { error: "That school wasn't found." };
+  const [{ n }] = await db
+    .select({ n: count() })
+    .from(schema.contactSubmissions)
+    .where(and(eq(schema.contactSubmissions.userId, user.id), eq(schema.contactSubmissions.status, "pending")));
+  if (n >= 25) return { error: "You have 25 emails waiting for review. Please try again once we've checked them." };
+  await db.insert(schema.contactSubmissions).values({
+    schoolId: d.schoolId,
+    userId: user.id,
+    role: d.role,
+    name: d.name || null,
+    title: d.title || null,
+    email: d.email,
+    source: d.source,
+  });
+  revalidatePath("/schools/[slug]", "page");
+  revalidatePath("/admin");
+  return { ok: true, at: Date.now() };
 }

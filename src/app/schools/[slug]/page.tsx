@@ -4,7 +4,8 @@ import { toggleSchool } from "../../actions";
 import { analyzeSchool, pipelineClasses, positionTimeline, programSummary, recruitingPipeline, rosterBreakdown } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, getRecruitingEvents, getSavedSchools, getSchoolBundleBySlug, getSchoolContacts, requireOnboarded } from "@/lib/queries";
+import { athleteInput, getRecruitingEvents, getSavedSchools, getSchoolBundleBySlug, getContactSubmissions, getSchoolContacts, requireOnboarded } from "@/lib/queries";
+import { mergeContacts } from "@/lib/coachEmail";
 import { parseAnswers } from "@/lib/questionnaire";
 import { ContactCoaches } from "@/components/ContactCoaches";
 import { eventInfo } from "@/lib/recruiting";
@@ -34,7 +35,14 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
   const program = programSummary(bundle.seasons);
   const saved = athlete ? (await getSavedSchools(athlete.id)).some((s) => s.schoolId === school.id) : false;
   const myEvents = athlete ? (await getRecruitingEvents(athlete.id)).filter((e) => e.schoolId === school.id) : [];
-  const contacts = await getSchoolContacts(school.id);
+  const [official, added] = await Promise.all([
+    getSchoolContacts(school.id),
+    athlete ? getContactSubmissions(school.id, athlete.userId) : Promise.resolve([]),
+  ]);
+  const contacts = mergeContacts(official, added);
+  const athleticsUrl = school.athleticsWebsite
+    ? /^https?:\/\//.test(school.athleticsWebsite) ? school.athleticsWebsite : `https://${school.athleticsWebsite}`
+    : null;
   const pos = athlete?.position;
   // Only http(s) links from the research sources are shown.
   const sources: string[] = (() => {
@@ -101,7 +109,7 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
         </section>
       )}
 
-      {athlete && contacts.some((c) => c.email) && (
+      {athlete && (
         <ContactCoaches
           contacts={contacts}
           athlete={{ ...athlete, video: parseAnswers(athlete.questionnaire)?.video ?? null }}
@@ -109,22 +117,8 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
           questionnaire={school.recruitingQuestionnaire && /^https?:\/\//.test(school.recruitingQuestionnaire) ? school.recruitingQuestionnaire : null}
           checkedAt={school.contactsCheckedAt?.toISOString() ?? null}
           source={school.contactsSource && /^https?:\/\//.test(school.contactsSource) ? school.contactsSource : null}
+          athleticsUrl={athleticsUrl}
         />
-      )}
-      {athlete && !contacts.some((c) => c.email) && school.athleticsWebsite && (
-        <section className="card flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
-          <span className="text-ink-2">
-            We don&apos;t have {school.name}&apos;s coach emails yet. Most programs list them on their coaches page.
-          </span>
-          <a
-            href={/^https?:\/\//.test(school.athleticsWebsite) ? school.athleticsWebsite : `https://${school.athleticsWebsite}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-ink underline"
-          >
-            Official athletics site ↗
-          </a>
-        </section>
       )}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
