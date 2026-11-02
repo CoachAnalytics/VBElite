@@ -6,6 +6,8 @@ import type { Athlete } from "@/db/schema";
 import { formatHeight } from "@/lib/format";
 import { POSITIONS } from "@/lib/positions";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
   const [state, action, pending] = useActionState(saveAthlete, undefined);
   const year = new Date().getFullYear();
@@ -46,6 +48,24 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
             defaultValue={v?.height ?? (athlete?.heightIn ? formatHeight(athlete.heightIn) : "")}
             className="input"
           />
+        </div>
+        <div>
+          <span className="label">Birth month and year <span className="font-normal text-ink-3">(optional)</span></span>
+          <div className="flex gap-2">
+            <select name="birthMonth" aria-label="Birth month" defaultValue={v?.birthMonth ?? athlete?.birthMonth ?? ""} className="input">
+              <option value="">Month</option>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
+              ))}
+            </select>
+            <select name="birthYear" aria-label="Birth year" defaultValue={v?.birthYear ?? athlete?.birthYear ?? ""} className="input">
+              <option value="">Year</option>
+              {Array.from({ length: 10 }, (_, i) => year - 19 + i).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-1 text-xs text-ink-3">Lets us compare her to elite players her exact age. Only the month and year are kept.</p>
         </div>
         <div>
           <label htmlFor="homeZip" className="label">Home ZIP code</label>

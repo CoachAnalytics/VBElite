@@ -98,6 +98,8 @@ const athleteSchema = z.object({
   position: z.enum(POSITIONS.map((p) => p.code) as [string, ...string[]], { message: "Choose a position" }),
   height: z.string().trim().optional(),
   homeZip: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit ZIP code"),
+  birthMonth: z.union([z.literal(""), z.coerce.number().int().min(1).max(12)]).optional(),
+  birthYear: z.union([z.literal(""), z.coerce.number().int().min(currentYear - 25).max(currentYear - 8)]).optional(),
 });
 
 export async function saveAthlete(_: FormState, form: FormData): Promise<FormState> {
@@ -111,19 +113,28 @@ export async function saveAthlete(_: FormState, form: FormData): Promise<FormSta
   if (d.height && heightIn == null) return fail(`Couldn't read the height "${d.height}". Try 5'10" or 70.`);
   const place = lookupZip(d.homeZip);
   if (!place) return fail("We couldn't find that ZIP code.");
+  const birthMonth = d.birthMonth === "" || d.birthMonth == null ? null : d.birthMonth;
+  const birthYear = d.birthYear === "" || d.birthYear == null ? null : d.birthYear;
+  if ((birthMonth == null) !== (birthYear == null)) return fail("Choose both the birth month and year, or leave both blank.");
+  if (birthYear != null && (d.gradYear - birthYear < 16 || d.gradYear - birthYear > 20)) {
+    return fail("That birth year doesn't fit the graduation year. Please check both.");
+  }
 
+  const existing = await getAthlete(user.id);
   const values = {
     name: d.name,
     gradYear: d.gradYear,
     position: d.position,
     heightIn,
+    ...(heightIn !== (existing?.heightIn ?? null) && { heightUpdatedAt: heightIn == null ? null : new Date() }),
+    birthMonth,
+    birthYear,
     homeZip: d.homeZip,
     homeCity: place.city,
     homeState: place.state,
     latitude: place.latitude,
     longitude: place.longitude,
   };
-  const existing = await getAthlete(user.id);
   if (existing) {
     await db.update(schema.athletes).set(values).where(eq(schema.athletes.id, existing.id));
   } else {

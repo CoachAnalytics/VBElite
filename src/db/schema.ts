@@ -149,6 +149,11 @@ export const athletes = pgTable("athletes", {
   gradYear: integer("grad_year").notNull(),
   position: text("position").notNull(),
   heightIn: integer("height_in"),
+  // When her height was last changed: growing athletes' heights go stale.
+  heightUpdatedAt: timestamp("height_updated_at", { withTimezone: true }),
+  // Month and year only (no full birth date): her age drives the age-adjusted comparisons.
+  birthYear: integer("birth_year"),
+  birthMonth: integer("birth_month"),
   homeZip: text("home_zip").notNull(),
   homeCity: text("home_city"),
   homeState: text("home_state"),
