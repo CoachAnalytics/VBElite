@@ -193,3 +193,12 @@ export async function getRecruitingEvents(athleteId: number) {
 export async function schoolNames() {
   return db.select({ id: schema.schools.id, name: schema.schools.name }).from(schema.schools).orderBy(asc(schema.schools.name));
 }
+
+/** Volleyball staff a recruit can contact at one school, in display order. */
+export async function getSchoolContacts(schoolId: number) {
+  return db
+    .select()
+    .from(schema.schoolContacts)
+    .where(eq(schema.schoolContacts.schoolId, schoolId))
+    .orderBy(asc(schema.schoolContacts.sortOrder));
+}
