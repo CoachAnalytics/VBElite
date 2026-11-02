@@ -1,5 +1,5 @@
 {
-  "id": "d94232e5-8ae8-4577-a11d-7a18e66e4ebb",
+  "id": "695b2281-8c54-4c88-a743-4b5551713de6",
   "prevId": "163abbfd-be82-47e8-89cd-4f4784957cf4",
   "version": "7",
   "dialect": "postgresql",
@@ -40,24 +40,6 @@
         },
         "height_in": {
           "name": "height_in",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "height_updated_at": {
-          "name": "height_updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "birth_year": {
-          "name": "birth_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "birth_month": {
-          "name": "birth_month",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -636,6 +618,82 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.school_contacts": {
+      "name": "school_contacts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "school_id": {
+          "name": "school_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "school_contacts_school_id_schools_id_fk": {
+          "name": "school_contacts_school_id_schools_id_fk",
+          "tableFrom": "school_contacts",
+          "tableTo": "schools",
+          "columnsFrom": [
+            "school_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.schools": {
       "name": "schools",
       "schema": "",
@@ -895,6 +953,24 @@
         },
         "sources": {
           "name": "sources",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recruiting_questionnaire": {
+          "name": "recruiting_questionnaire",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contacts_checked_at": {
+          "name": "contacts_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contacts_source": {
+          "name": "contacts_source",
           "type": "text",
           "primaryKey": false,
           "notNull": false
