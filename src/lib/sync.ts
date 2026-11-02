@@ -45,6 +45,12 @@ async function github(path: string, accept: string) {
   return res;
 }
 
+/**
+ * Bump when the importer starts reading new fields, so files already imported by older code
+ * are imported again (e.g. 2 = coach contacts). Stored with the file's SHA.
+ */
+const IMPORT_VERSION = 2;
+
 export async function syncFromDataRepo(trigger: "schedule" | "manual"): Promise<SyncResult> {
   const log = (r: SyncResult, sha: string | null = null) =>
     db.insert(schema.dataSyncs).values({ trigger, status: r.status, message: r.message, schools: r.schools, sha }).then(() => r);
@@ -56,7 +62,7 @@ export async function syncFromDataRepo(trigger: "schedule" | "manual"): Promise<
   let sha: string | null = null;
   try {
     const meta = (await (await github(DATA_PATH, "application/vnd.github+json")).json()) as { sha: string };
-    sha = meta.sha;
+    sha = `${meta.sha}@v${IMPORT_VERSION}`;
 
     const [last] = await db
       .select({ sha: schema.dataSyncs.sha, status: schema.dataSyncs.status })
@@ -65,7 +71,8 @@ export async function syncFromDataRepo(trigger: "schedule" | "manual"): Promise<
       .where(inArray(schema.dataSyncs.status, ["imported", "unchanged"]))
       .orderBy(desc(schema.dataSyncs.ranAt))
       .limit(1);
-    if (last?.sha === sha) return log({ status: "unchanged", message: "Already up to date." }, sha);
+    // "Sync now" always imports; the daily run skips a file this code version already loaded.
+    if (trigger === "schedule" && last?.sha === sha) return log({ status: "unchanged", message: "Already up to date." }, sha);
 
     const bytes = Buffer.from(await (await github(DATA_PATH, "application/vnd.github.raw")).arrayBuffer());
     const parsed = parseSeedFile(bytes, true);
