@@ -60,6 +60,11 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
       studentFacultyRatio: s.studentFacultyRatio ?? null,
       researchedAt: s.researchedAt ? new Date(s.researchedAt) : null,
       sources: s.sources?.length ? JSON.stringify(s.sources) : null,
+      ...(s.contacts !== undefined && {
+        recruitingQuestionnaire: s.recruitingQuestionnaire ?? null,
+        contactsCheckedAt: s.contactsCheckedAt ? new Date(s.contactsCheckedAt) : null,
+        contactsSource: s.contactsSource ?? null,
+      }),
       city: s.city,
       state: s.state,
       latitude,
@@ -108,6 +113,13 @@ export async function loadSchools(seeds: SchoolSeed[]): Promise<LoadSummary> {
       await tx.delete(schema.seasons).where(eq(schema.seasons.schoolId, schoolId));
       await tx.delete(schema.rosterPlayers).where(eq(schema.rosterPlayers.schoolId, schoolId));
       await tx.delete(schema.commits).where(eq(schema.commits.schoolId, schoolId));
+
+      if (s.contacts !== undefined) {
+        await tx.delete(schema.schoolContacts).where(eq(schema.schoolContacts.schoolId, schoolId));
+        if (s.contacts.length) {
+          await tx.insert(schema.schoolContacts).values(s.contacts.map((c, i) => ({ ...c, role: c.role, schoolId, sortOrder: i })));
+        }
+      }
 
       if (s.seasons.length) {
         await tx.insert(schema.seasons).values(s.seasons.map((x) => ({ ...x, ncaaSeed: x.ncaaSeed ?? null, schoolId })));

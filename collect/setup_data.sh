@@ -11,4 +11,6 @@ for f in directory tournament scorecard research_batches spreadsheet; do
   [ -e "data/raw/$f.json" ] || ln -s "$DATA/raw/$f.json" "data/raw/$f.json"
 done
 [ -e data/raw/research ] || ln -s "$DATA/research" data/raw/research
+mkdir -p "$DATA/contacts"
+[ -e data/raw/contacts ] || ln -s "$DATA/contacts" data/raw/contacts
 echo "data/raw linked to $DATA"

@@ -240,17 +240,53 @@ def build_school(d, sc, tr, r, sh):
     }
 
 
+def load_contacts():
+    """Coach and program emails per school (contacts/<ncaaOrgId>.json, see collect/CONTACTS.md)."""
+    out = {}
+    folder = RAW / "contacts"
+    if not folder.exists():
+        return out
+    for p in sorted(folder.glob("*.json")):
+        try:
+            r = json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"SKIP contacts/{p.name}: invalid JSON ({e})")
+            continue
+        out[str(r.get("ncaaOrgId") or p.stem)] = r
+    return out
+
+
+def contact_fields(c):
+    """Seed fields for one school's contacts; only real, emailable entries are kept."""
+    if not c:
+        return {}
+    people = [
+        {k: x.get(k) for k in ("name", "title", "role", "email", "phone")}
+        for x in c.get("contacts") or []
+        if x.get("email") or (x.get("name") and x.get("role") in ("head", "recruiting", "assistant"))
+    ]
+    return {
+        "contacts": people,
+        "recruitingQuestionnaire": c.get("recruitingQuestionnaire"),
+        "contactsCheckedAt": c.get("checkedAt"),
+        "contactsSource": c.get("sourceUrl"),
+    }
+
+
 def main():
     directory = read_json("directory.json")
     tournament = read_json("tournament.json")
     scorecard = read_json("scorecard.json")
     research = load_research() if (RAW / "research").exists() else {}
+    contacts = load_contacts()
     sheet = match_sheet(read_json("spreadsheet.json"), directory) if (RAW / "spreadsheet.json").exists() else {}
 
     schools = []
     for d in directory:
         key = str(d["ncaaOrgId"])
-        schools.append(build_school(d, scorecard.get(key, {}), tournament.get(key, {}), research.get(key), sheet.get(key)))
+        school = build_school(d, scorecard.get(key, {}), tournament.get(key, {}), research.get(key), sheet.get(key))
+        school.update(contact_fields(contacts.get(key)))
+        schools.append(school)
 
     # Two schools with one display name (Miami FL/OH, Loyola IL/MD): add the state.
     counts = {}

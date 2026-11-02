@@ -193,3 +193,51 @@ export async function getRecruitingEvents(athleteId: number) {
 export async function schoolNames() {
   return db.select({ id: schema.schools.id, name: schema.schools.name }).from(schema.schools).orderBy(asc(schema.schools.name));
 }
+
+/** Volleyball staff a recruit can contact at one school, in display order. */
+export async function getSchoolContacts(schoolId: number) {
+  return db
+    .select()
+    .from(schema.schoolContacts)
+    .where(eq(schema.schoolContacts.schoolId, schoolId))
+    .orderBy(asc(schema.schoolContacts.sortOrder));
+}
+
+/** Emails families added for one school that this user may see: approved ones, plus their own. */
+export async function getContactSubmissions(schoolId: number, userId: number) {
+  const rows = await db
+    .select()
+    .from(schema.contactSubmissions)
+    .where(
+      and(
+        eq(schema.contactSubmissions.schoolId, schoolId),
+        or(eq(schema.contactSubmissions.status, "approved"), eq(schema.contactSubmissions.userId, userId)),
+      ),
+    )
+    .orderBy(asc(schema.contactSubmissions.createdAt));
+  return rows.map((r) => ({ ...r, mine: r.userId === userId }));
+}
+
+/** Families' coach emails waiting for an admin, with what's needed to judge them. */
+export async function pendingContactSubmissions() {
+  return db
+    .select({
+      id: schema.contactSubmissions.id,
+      name: schema.contactSubmissions.name,
+      title: schema.contactSubmissions.title,
+      role: schema.contactSubmissions.role,
+      email: schema.contactSubmissions.email,
+      source: schema.contactSubmissions.source,
+      createdAt: schema.contactSubmissions.createdAt,
+      schoolName: schema.schools.name,
+      schoolSlug: schema.schools.slug,
+      website: schema.schools.website,
+      athleticsWebsite: schema.schools.athleticsWebsite,
+      submittedBy: schema.users.email,
+    })
+    .from(schema.contactSubmissions)
+    .innerJoin(schema.schools, eq(schema.schools.id, schema.contactSubmissions.schoolId))
+    .innerJoin(schema.users, eq(schema.users.id, schema.contactSubmissions.userId))
+    .where(eq(schema.contactSubmissions.status, "pending"))
+    .orderBy(asc(schema.contactSubmissions.createdAt));
+}

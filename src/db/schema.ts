@@ -64,6 +64,10 @@ export const schools = pgTable("schools", {
   // When the roster/commit/coach research was last done, and the URLs it used (JSON array)
   researchedAt: timestamp("researched_at", { withTimezone: true }),
   sources: text("sources"),
+  // Link to the program's online recruiting questionnaire, and when/where staff emails were checked
+  recruitingQuestionnaire: text("recruiting_questionnaire"),
+  contactsCheckedAt: timestamp("contacts_checked_at", { withTimezone: true }),
+  contactsSource: text("contacts_source"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -118,6 +122,45 @@ export const commits = pgTable("commits", {
   club: text("club"),
   note: text("note"),
   source: text("source"),
+});
+
+// Volleyball staff a recruit can email, from the program's official staff listing.
+export const schoolContacts = pgTable("school_contacts", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  // Null for a shared program inbox
+  name: text("name"),
+  title: text("title"),
+  // program | head | recruiting | assistant | operations
+  role: text("role").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// A coach email an athlete's family added. Shown to them right away; shown to everyone once
+// an admin approves it. Kept apart from school_contacts so data syncs never overwrite it.
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name"),
+  title: text("title"),
+  // program | head | recruiting | assistant | operations
+  role: text("role").notNull(),
+  email: text("email").notNull(),
+  // Where the family got it: coach-email | website | camp | other
+  source: text("source").notNull(),
+  // pending | approved | rejected
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
 });
 
 // ---------- Accounts ----------
@@ -237,4 +280,5 @@ export type School = typeof schools.$inferSelect;
 export type Season = typeof seasons.$inferSelect;
 export type RosterPlayer = typeof rosterPlayers.$inferSelect;
 export type Commit = typeof commits.$inferSelect;
+export type SchoolContact = typeof schoolContacts.$inferSelect;
 export type Athlete = typeof athletes.$inferSelect;

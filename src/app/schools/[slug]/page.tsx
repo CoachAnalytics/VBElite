@@ -4,7 +4,10 @@ import { toggleSchool } from "../../actions";
 import { analyzeSchool, pipelineClasses, positionTimeline, programSummary, recruitingPipeline, rosterBreakdown } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, getRecruitingEvents, getSavedSchools, getSchoolBundleBySlug, requireOnboarded } from "@/lib/queries";
+import { athleteInput, getRecruitingEvents, getSavedSchools, getSchoolBundleBySlug, getContactSubmissions, getSchoolContacts, requireOnboarded } from "@/lib/queries";
+import { mergeContacts } from "@/lib/coachEmail";
+import { parseAnswers } from "@/lib/questionnaire";
+import { ContactCoaches } from "@/components/ContactCoaches";
 import { eventInfo } from "@/lib/recruiting";
 import { PositionTimelineChart, WinPctChart } from "@/components/SchoolCharts";
 import { PipelineTable, RosterBreakdownTable } from "@/components/BreakdownTables";
@@ -32,6 +35,14 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
   const program = programSummary(bundle.seasons);
   const saved = athlete ? (await getSavedSchools(athlete.id)).some((s) => s.schoolId === school.id) : false;
   const myEvents = athlete ? (await getRecruitingEvents(athlete.id)).filter((e) => e.schoolId === school.id) : [];
+  const [official, added] = await Promise.all([
+    getSchoolContacts(school.id),
+    athlete ? getContactSubmissions(school.id, athlete.userId) : Promise.resolve([]),
+  ]);
+  const contacts = mergeContacts(official, added);
+  const athleticsUrl = school.athleticsWebsite
+    ? /^https?:\/\//.test(school.athleticsWebsite) ? school.athleticsWebsite : `https://${school.athleticsWebsite}`
+    : null;
   const pos = athlete?.position;
   // Only http(s) links from the research sources are shown.
   const sources: string[] = (() => {
@@ -96,6 +107,18 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
           </div>
           <Link href={`/recruiting#${school.slug}`} className="text-accent-ink underline">{myEvents.length ? "Open log" : "Log an update"}</Link>
         </section>
+      )}
+
+      {athlete && (
+        <ContactCoaches
+          contacts={contacts}
+          athlete={{ ...athlete, video: parseAnswers(athlete.questionnaire)?.video ?? null }}
+          school={{ id: school.id, name: school.name }}
+          questionnaire={school.recruitingQuestionnaire && /^https?:\/\//.test(school.recruitingQuestionnaire) ? school.recruitingQuestionnaire : null}
+          checkedAt={school.contactsCheckedAt?.toISOString() ?? null}
+          source={school.contactsSource && /^https?:\/\//.test(school.contactsSource) ? school.contactsSource : null}
+          athleticsUrl={athleticsUrl}
+        />
       )}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">

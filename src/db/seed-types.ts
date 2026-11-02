@@ -31,6 +31,15 @@ export type CommitSeed = {
   source?: string | null;
 };
 
+export type ContactSeed = {
+  name: string | null;
+  title: string | null;
+  /** program (shared inbox) | head | recruiting | assistant | operations */
+  role: string;
+  email: string | null;
+  phone: string | null;
+};
+
 export type SchoolSeed = {
   slug: string;
   name: string;
@@ -77,4 +86,9 @@ export type SchoolSeed = {
   seasons: SeasonSeed[];
   roster: RosterSeed[];
   commits: CommitSeed[];
+  /** Absent in older seeds: the school's contacts are then left as they are. */
+  contacts?: ContactSeed[];
+  recruitingQuestionnaire?: string | null;
+  contactsCheckedAt?: string | null;
+  contactsSource?: string | null;
 };
