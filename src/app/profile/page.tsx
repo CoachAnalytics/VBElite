@@ -42,6 +42,16 @@ export default async function ProfilePage() {
           <Link href="/recruiting" className="btn-primary">Open my schools</Link>
         </section>
       )}
+      {athlete?.questionnaireAt && (
+        <section className="card space-y-2 p-5">
+          <h2 className="font-medium">Stats</h2>
+          <p className="text-sm text-ink-2">
+            Add her season stats (paste them from MaxPreps or type them in). Her latest season goes into her coach emails, with
+            per-set numbers coaches look at.
+          </p>
+          <Link href="/stats" className="btn-primary">Open stats</Link>
+        </section>
+      )}
       {athlete?.questionnaireAt && <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />}
       {athlete && (
         <section id="data" className="card space-y-2 p-5 text-sm">

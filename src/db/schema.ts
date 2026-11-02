@@ -201,6 +201,8 @@ export const athletes = pgTable("athletes", {
   // without name or contact details, count in VB Elite's anonymous statistics. False when the
   // family opted out on her profile; researchConsentAt is when they last changed it.
   researchConsent: boolean("research_consent").notNull().default(true),
+  // Her MaxPreps athlete page (normalized https URL); linked, never fetched.
+  maxprepsUrl: text("maxpreps_url"),
   researchConsentAt: timestamp("research_consent_at", { withTimezone: true }),
   homeZip: text("home_zip").notNull(),
   homeCity: text("home_city"),
@@ -267,6 +269,40 @@ export const athleteMeasurements = pgTable("athlete_measurements", {
   source: text("source").notNull(),
 });
 
+// One season of her stats (typed, or pasted from her own MaxPreps page). Counts in the
+// anonymous statistics unless she opted out.
+export const athleteSeasons = pgTable(
+  "athlete_seasons",
+  {
+    id: serial("id").primaryKey(),
+    athleteId: integer("athlete_id")
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    // Fall of the school year: 2025 = the 2025-26 season
+    season: integer("season").notNull(),
+    // varsity | jv | freshman | club
+    level: text("level").notNull(),
+    position: text("position").notNull(),
+    matches: integer("matches"),
+    sets: integer("sets"),
+    kills: integer("kills"),
+    attackErrors: integer("attack_errors"),
+    attempts: integer("attempts"),
+    assists: integer("assists"),
+    aces: integer("aces"),
+    serveErrors: integer("serve_errors"),
+    digs: integer("digs"),
+    receptions: integer("receptions"),
+    receptionErrors: integer("reception_errors"),
+    soloBlocks: integer("solo_blocks"),
+    blockAssists: integer("block_assists"),
+    // typed | pasted
+    source: text("source").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("athlete_seasons_unique").on(t.athleteId, t.season, t.level)],
+);
+
 // A frozen snapshot of the athlete when she logged an offer or commitment: who offered, at what
 // level, and what her measurables, age and club level were at the time. Building toward real
 // "girls like her got offers from programs like these" projections.
@@ -303,6 +339,8 @@ export const recruitingOutcomes = pgTable("recruiting_outcomes", {
   clubDivision: text("club_division"),
   clubRole: text("club_role"),
   coachProjection: text("coach_projection"),
+  // Her most recent season's stats at the time (JSON of athlete_seasons fields), if any
+  stats: text("stats"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -346,3 +384,4 @@ export type RosterPlayer = typeof rosterPlayers.$inferSelect;
 export type Commit = typeof commits.$inferSelect;
 export type SchoolContact = typeof schoolContacts.$inferSelect;
 export type Athlete = typeof athletes.$inferSelect;
+export type AthleteSeason = typeof athleteSeasons.$inferSelect;

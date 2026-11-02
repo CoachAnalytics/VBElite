@@ -56,7 +56,7 @@ export async function recordOutcome(athleteId: number, event: { id: number; scho
   if (event.type !== "offer" && event.type !== "committed") return;
   const [a] = await db.select().from(schema.athletes).where(eq(schema.athletes.id, athleteId));
   if (!a) return;
-  const [{ schools }, confirmation, [lastMeasured]] = await Promise.all([
+  const [{ schools }, confirmation, [lastMeasured], seasons] = await Promise.all([
     getRecommendationData(a.position, a.gradYear),
     latestConfirmation(a.id),
     db
@@ -65,7 +65,9 @@ export async function recordOutcome(athleteId: number, event: { id: number; scho
       .where(eq(schema.athleteMeasurements.athleteId, athleteId))
       .orderBy(desc(schema.athleteMeasurements.measuredAt))
       .limit(1),
+    db.select().from(schema.athleteSeasons).where(eq(schema.athleteSeasons.athleteId, athleteId)),
   ]);
+  const latest = latestSeason(seasons);
   const school = schools.find((s) => s.id === event.schoolId);
   const q = parseAnswers(a.questionnaire);
   await db
@@ -87,6 +89,14 @@ export async function recordOutcome(athleteId: number, event: { id: number; scho
       clubDivision: q?.clubDivision ?? null,
       clubRole: confirmation?.role ?? q?.clubRole ?? null,
       coachProjection: confirmation?.level ?? q?.coachProjection ?? null,
+      stats: latest ? JSON.stringify(Object.fromEntries(Object.entries(latest).filter(([k]) => !["id", "athleteId", "updatedAt"].includes(k)))) : null,
     })
     .onConflictDoNothing();
+}
+
+const LEVEL_RANK: Record<string, number> = { varsity: 0, club: 1, jv: 2, freshman: 3 };
+
+/** Her most recent season, preferring high school varsity, then club, within that season. */
+export function latestSeason<T extends { season: number; level: string }>(seasons: T[]): T | null {
+  return [...seasons].sort((a, b) => b.season - a.season || (LEVEL_RANK[a.level] ?? 9) - (LEVEL_RANK[b.level] ?? 9))[0] ?? null;
 }

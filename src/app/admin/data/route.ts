@@ -7,10 +7,11 @@ const cell = (v: unknown) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** Downloads VB Elite's own dataset (opted-in athletes, anonymized) as CSV: ?kind=measurements|outcomes. */
+/** Downloads VB Elite's own dataset (anonymized; opted-out athletes left out) as CSV: ?kind=measurements|outcomes|seasons. */
 export async function GET(req: Request) {
   await requireAdmin();
-  const kind = new URL(req.url).searchParams.get("kind") === "outcomes" ? "outcomes" : "measurements";
+  const asked = new URL(req.url).searchParams.get("kind");
+  const kind = asked === "outcomes" || asked === "seasons" ? asked : "measurements";
   const rows: Record<string, unknown>[] = (await researchDataset())[kind];
   const cols = rows.length ? Object.keys(rows[0]) : ["athlete"];
   const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\n");

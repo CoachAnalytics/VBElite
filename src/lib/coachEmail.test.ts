@@ -26,6 +26,15 @@ describe("coachEmail", () => {
   });
 });
 
+describe("coachEmail with stats", () => {
+  it("adds her latest season and MaxPreps page when she has them", () => {
+    const { body } = coachEmail({ ...athlete, statsLine: "2025-26 varsity (So): 312 kills (3.25/set)", maxprepsUrl: "https://www.maxpreps.com/x/athletes/y/" }, "Sample U", "Pat Lee");
+    expect(body).toContain("Stats: 2025-26 varsity (So): 312 kills (3.25/set)");
+    expect(body).toContain("MaxPreps: https://www.maxpreps.com/x/athletes/y/");
+    expect(coachEmail(athlete, "Sample U", "Pat Lee").body).not.toContain("MaxPreps:");
+  });
+});
+
 describe("mailtoLink", () => {
   it("encodes subject and body, keeping line breaks", () => {
     const link = mailtoLink("coach@school.edu", "A & B", "Hi,\nThanks");

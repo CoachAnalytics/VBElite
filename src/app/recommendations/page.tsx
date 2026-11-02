@@ -4,9 +4,10 @@ import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { parseAnswers } from "@/lib/questionnaire";
 import { estimateLevel, heightBenchmarks, levelPhrase, programLevels, recommend, type Tier } from "@/lib/recommend";
-import { commitHeights, getRecommendationData, getRecruitingEvents, getSavedSchools, lastMeasuredAt, requireOnboarded } from "@/lib/queries";
+import { commitHeights, getRecommendationData, getRecruitingEvents, getSavedSchools, getSeasons, lastMeasuredAt, requireOnboarded } from "@/lib/queries";
 import { ageAdjusted, ageYears, collegeMeasurables, monthsSince, shareBelow } from "@/lib/development";
-import { currentMeasurables } from "@/lib/athleteData";
+import { currentMeasurables, latestSeason } from "@/lib/athleteData";
+import { statLine } from "@/lib/stats";
 import { MeasurablesCard, type CollegeBand } from "@/components/MeasurablesCard";
 import { interestLevel, schoolStatuses } from "@/lib/recruiting";
 import { latestConfirmation } from "@/lib/coachLinks";
@@ -21,14 +22,17 @@ const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
 export default async function RecommendationsPage() {
   const { athlete } = await requireOnboarded();
   const answers = parseAnswers(athlete.questionnaire);
-  const [{ schools, players }, saved, confirmation, events, commits, measuredAt] = await Promise.all([
+  const [{ schools, players }, saved, confirmation, events, commits, measuredAt, seasons] = await Promise.all([
     getRecommendationData(athlete.position, athlete.gradYear),
     getSavedSchools(athlete.id),
     latestConfirmation(athlete.id),
     getRecruitingEvents(athlete.id),
     commitHeights(athlete.position),
     lastMeasuredAt(athlete.id),
+    getSeasons(athlete.id),
   ]);
+  const latest = latestSeason(seasons);
+  const latestLine = latest ? statLine(latest, athlete.position, athlete.gradYear) : null;
   const savedIds = new Set(saved.map((s) => s.schoolId));
   const levels = programLevels(schools);
   const benchmarks = heightBenchmarks(players, levels);
@@ -135,6 +139,14 @@ export default async function RecommendationsPage() {
         monthsSinceMeasured={measuredAt ? monthsSince(measuredAt, now) : athlete.heightUpdatedAt ? monthsSince(athlete.heightUpdatedAt, now) : null}
         consent={athlete.researchConsent}
       />
+
+      <section className="card flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+        <div className="min-w-0">
+          <span className="font-medium">Stats: </span>
+          <span className="text-ink-2">{latestLine ?? "none entered yet. Paste them from MaxPreps or type them in."}</span>
+        </div>
+        <Link href="/stats" className="text-accent-ink underline">{latestLine ? "Update stats" : "Add stats"}</Link>
+      </section>
 
       {notSaved.length > 0 && (
         <form action={addRecommended} className="flex flex-wrap items-center gap-3">

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, ne, or, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { redirect } from "next/navigation";
 import { programSummary, type AthleteInput, type SchoolBundle } from "./analytics";
@@ -268,7 +268,7 @@ export async function lastMeasuredAt(athleteId: number): Promise<Date | null> {
  */
 export async function researchDataset() {
   const consented = eq(schema.athletes.researchConsent, true);
-  const [measurements, outcomes] = await Promise.all([
+  const [measurements, outcomes, seasons] = await Promise.all([
     db
       .select({
         athleteId: schema.athleteMeasurements.athleteId,
@@ -307,12 +307,39 @@ export async function researchDataset() {
         clubDivision: schema.recruitingOutcomes.clubDivision,
         clubRole: schema.recruitingOutcomes.clubRole,
         coachProjection: schema.recruitingOutcomes.coachProjection,
+        stats: schema.recruitingOutcomes.stats,
       })
       .from(schema.recruitingOutcomes)
       .innerJoin(schema.athletes, eq(schema.athletes.id, schema.recruitingOutcomes.athleteId))
       .innerJoin(schema.schools, eq(schema.schools.id, schema.recruitingOutcomes.schoolId))
       .where(consented)
       .orderBy(asc(schema.recruitingOutcomes.occurredAt)),
+    db
+      .select({
+        athleteId: schema.athleteSeasons.athleteId,
+        season: schema.athleteSeasons.season,
+        level: schema.athleteSeasons.level,
+        position: schema.athleteSeasons.position,
+        gradYear: schema.athletes.gradYear,
+        matches: schema.athleteSeasons.matches,
+        sets: schema.athleteSeasons.sets,
+        kills: schema.athleteSeasons.kills,
+        attackErrors: schema.athleteSeasons.attackErrors,
+        attempts: schema.athleteSeasons.attempts,
+        assists: schema.athleteSeasons.assists,
+        aces: schema.athleteSeasons.aces,
+        serveErrors: schema.athleteSeasons.serveErrors,
+        digs: schema.athleteSeasons.digs,
+        receptions: schema.athleteSeasons.receptions,
+        receptionErrors: schema.athleteSeasons.receptionErrors,
+        soloBlocks: schema.athleteSeasons.soloBlocks,
+        blockAssists: schema.athleteSeasons.blockAssists,
+        source: schema.athleteSeasons.source,
+      })
+      .from(schema.athleteSeasons)
+      .innerJoin(schema.athletes, eq(schema.athletes.id, schema.athleteSeasons.athleteId))
+      .where(consented)
+      .orderBy(asc(schema.athleteSeasons.season)),
   ]);
   // Replace database ids with per-export pseudonyms so rows from one athlete still link up.
   const alias = new Map<number, string>();
@@ -320,5 +347,34 @@ export async function researchDataset() {
   return {
     measurements: measurements.map(({ athleteId, ...r }) => ({ athlete: pseudo(athleteId), ...r })),
     outcomes: outcomes.map(({ athleteId, ...r }) => ({ athlete: pseudo(athleteId), ...r })),
+    seasons: seasons.map(({ athleteId, ...r }) => ({ athlete: pseudo(athleteId), ...r })),
   };
+}
+
+/** Her seasons of stats, newest first. */
+export async function getSeasons(athleteId: number) {
+  return db
+    .select()
+    .from(schema.athleteSeasons)
+    .where(eq(schema.athleteSeasons.athleteId, athleteId))
+    .orderBy(desc(schema.athleteSeasons.season), asc(schema.athleteSeasons.level));
+}
+
+/**
+ * Seasons from other athletes (not opted out) at a position and team level, with each one's
+ * graduation year so callers can match grade: the peer group for stat comparisons.
+ */
+export async function seasonPeers(position: string, level: string, excludeAthleteId: number) {
+  return db
+    .select({ season: schema.athleteSeasons, gradYear: schema.athletes.gradYear })
+    .from(schema.athleteSeasons)
+    .innerJoin(schema.athletes, eq(schema.athletes.id, schema.athleteSeasons.athleteId))
+    .where(
+      and(
+        eq(schema.athleteSeasons.position, position),
+        eq(schema.athleteSeasons.level, level),
+        eq(schema.athletes.researchConsent, true),
+        ne(schema.athleteSeasons.athleteId, excludeAthleteId),
+      ),
+    );
 }

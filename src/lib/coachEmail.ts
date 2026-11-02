@@ -23,6 +23,9 @@ export type EmailAthlete = {
   homeCity: string | null;
   homeState: string | null;
   video?: string | null;
+  /** Her latest season in one line (see statLine), and her MaxPreps page. */
+  statsLine?: string | null;
+  maxprepsUrl?: string | null;
 };
 
 /** "Coach Lee" from "Pat Lee" (and "Coach" for a shared inbox or unknown name). */
@@ -45,6 +48,8 @@ export function coachEmail(athlete: EmailAthlete, schoolName: string, coachName:
     "Club team and jersey number: [add]",
     "Upcoming tournaments where you can see me play: [add]",
     `Highlight video: ${athlete.video || "[add link]"}`,
+    ...(athlete.statsLine ? [`Stats: ${athlete.statsLine}`] : []),
+    ...(athlete.maxprepsUrl ? [`MaxPreps: ${athlete.maxprepsUrl}`] : []),
     "GPA / test scores: [add]",
     "",
     "Thank you for your time. I look forward to hearing from you.",

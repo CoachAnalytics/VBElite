@@ -34,6 +34,12 @@ export default async function CoachConfirmationPage({ params }: PageProps<"/coac
         <p className="mt-1 text-ink-2">
           {positionLabel(athlete.position)} · Class of {athlete.gradYear}
           {athlete.heightIn ? ` · ${formatHeight(athlete.heightIn)}` : ""}
+          {athlete.maxprepsUrl && (
+            <>
+              {" · "}
+              <a href={athlete.maxprepsUrl} target="_blank" rel="noopener noreferrer" className="text-accent-ink underline">Stats on MaxPreps ↗</a>
+            </>
+          )}
         </p>
         <p className="mt-3 text-sm text-ink-2">
           {first}&apos;s family is using VB Elite to build a realistic list of college volleyball programs, and asked for

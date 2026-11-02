@@ -84,6 +84,21 @@ export function AthleteForm({ athlete }: { athlete: Athlete | null }) {
           )}
         </div>
       </div>
+      <div>
+        <label htmlFor="maxprepsUrl" className="label">MaxPreps page <span className="font-normal text-ink-3">(optional)</span></label>
+        <input
+          id="maxprepsUrl"
+          name="maxprepsUrl"
+          type="url"
+          inputMode="url"
+          autoCapitalize="off"
+          autoCorrect="off"
+          placeholder="https://www.maxpreps.com/…/athletes/…"
+          defaultValue={v?.maxprepsUrl ?? athlete?.maxprepsUrl ?? ""}
+          className="input"
+        />
+        <p className="mt-1 text-xs text-ink-3">Coaches can click through to her stats from your emails.</p>
+      </div>
       <DataNotice what="Height, age and position" />
       {state?.error && <p className="text-sm text-bad" role="alert">{state.error}</p>}
       {state?.ok && <p className="text-sm text-good" role="status">Saved.</p>}

@@ -127,11 +127,14 @@ export default async function AdminPage() {
           estimates.
         </p>
         <p className="text-sm">
-          <b>{dataset.measurements.length}</b> measurement snapshots · <b>{offers}</b> offers · <b>{commitsLogged}</b> commitments
+          <b>{dataset.measurements.length}</b> measurement snapshots · <b>{dataset.seasons.length}</b> seasons of stats ·{" "}
+          <b>{offers}</b> offers · <b>{commitsLogged}</b> commitments
           {" · "}
           <a href="/admin/data?kind=measurements" className="text-accent-ink underline">Download measurements (CSV)</a>
           {" · "}
           <a href="/admin/data?kind=outcomes" className="text-accent-ink underline">Download offers &amp; commits (CSV)</a>
+          {" · "}
+          <a href="/admin/data?kind=seasons" className="text-accent-ink underline">Download stats (CSV)</a>
         </p>
         <div className="overflow-x-auto">
           <table className="card min-w-[520px] text-sm">

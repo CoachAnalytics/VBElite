@@ -41,6 +41,7 @@ export default function PrivacyPage() {
           <li><b>Account:</b> your email address and password (stored only as a secure hash; we can&apos;t read it).</li>
           <li><b>Athlete profile:</b> the athlete&apos;s name, graduation year, position, height, home ZIP code, and optionally birth month and year (never a full date of birth).</li>
           <li><b>Questionnaire answers:</b> measurements (standing reach, block and approach touch), club and school playing level, academics ranges, and school preferences.</li>
+          <li><b>Stats and links:</b> season stats you enter or paste (kills, digs, aces, blocks, assists and similar), and the link to her MaxPreps page if you add one. We never collect anything from MaxPreps ourselves; the link is only shown to you and to the coaches you contact.</li>
           <li><b>Recruiting activity:</b> what you log, such as emails sent, coach replies, camp invitations, visits, offers and commitments, and the schools on your list.</li>
           <li><b>Coach confirmations:</b> if you send a confirmation link, the coach&apos;s name and role you enter and the coach&apos;s answers.</li>
           <li><b>Coach emails you add:</b> a coach&apos;s name, title and email address you submit for a school.</li>
@@ -60,8 +61,9 @@ export default function PrivacyPage() {
         <p>
           To make age-based comparisons and projections more accurate for every athlete, we include the following in VB
           Elite&apos;s anonymous statistics by default: the athlete&apos;s measurements (height, reach, touches) with the date
-          and her age at the time, her position and graduation year, and snapshots of offers and commitments she logs (the
-          school, its level and conference, and her measurements, age, club level and coach&apos;s projection at that time).
+          and her age at the time, her season stats, her position and graduation year, and snapshots of offers and commitments she logs (the
+          school, its level and conference, and her measurements, latest stats, age, club level and coach&apos;s projection at
+          that time). Her MaxPreps link is not included.
         </p>
         <p>
           These records are stored without her name, email address or other contact details. When we analyze or export them,

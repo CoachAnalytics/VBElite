@@ -13,6 +13,7 @@ import { COACH_ROLES, responseSchema } from "@/lib/coach";
 import { eventSchema } from "@/lib/recruiting";
 import { CONTACT_SOURCES } from "@/lib/coachEmail";
 import { recordMeasurement, recordOutcome } from "@/lib/athleteData";
+import { normalizeMaxprepsUrl, STAT_FIELDS, TEAM_LEVELS } from "@/lib/stats";
 import { createCoachLink, saveCoachResponse } from "@/lib/coachLinks";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -102,6 +103,7 @@ const athleteSchema = z.object({
   homeZip: z.string().trim().regex(/^\d{5}$/, "Enter a 5-digit ZIP code"),
   birthMonth: z.union([z.literal(""), z.coerce.number().int().min(1).max(12)]).optional(),
   birthYear: z.union([z.literal(""), z.coerce.number().int().min(currentYear - 25).max(currentYear - 8)]).optional(),
+  maxprepsUrl: z.string().trim().max(400).optional(),
 });
 
 export async function saveAthlete(_: FormState, form: FormData): Promise<FormState> {
@@ -122,8 +124,13 @@ export async function saveAthlete(_: FormState, form: FormData): Promise<FormSta
     return fail("That birth year doesn't fit the graduation year. Please check both.");
   }
 
+  const maxprepsUrl = d.maxprepsUrl ? normalizeMaxprepsUrl(d.maxprepsUrl) : null;
+  if (d.maxprepsUrl && !maxprepsUrl) {
+    return fail("That doesn't look like a MaxPreps athlete page. Open her page on maxpreps.com and copy the address.");
+  }
   const existing = await getAthlete(user.id);
   const values = {
+    maxprepsUrl,
     name: d.name,
     gradYear: d.gradYear,
     position: d.position,
@@ -378,5 +385,45 @@ export async function setResearchConsent(form: FormData) {
     .update(schema.athletes)
     .set({ researchConsent: on, researchConsentAt: new Date() })
     .where(eq(schema.athletes.id, athlete.id));
+  revalidatePath("/", "layout");
+}
+
+// ---------- Season stats ----------
+
+const statNumber = z.union([z.literal(""), z.coerce.number().int().min(0).max(5000)]);
+const seasonSchema = z.object({
+  season: z.coerce.number().int().min(2015).max(currentYear + 1),
+  level: z.enum(TEAM_LEVELS.map((l) => l.value) as [string, ...string[]], { message: "Choose the team" }),
+  source: z.enum(["typed", "pasted"]),
+  ...Object.fromEntries(STAT_FIELDS.map((f) => [f.key, statNumber])),
+});
+
+export type SeasonFormState = { error?: string; ok?: boolean; at?: number } | undefined;
+
+/** Saves one season of stats (replacing that season and team if already entered). */
+export async function saveSeason(_: SeasonFormState, form: FormData): Promise<SeasonFormState> {
+  const athlete = await requireAthlete();
+  const parsed = seasonSchema.safeParse(Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v).trim()])));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data as Record<string, unknown> & { season: number; level: string; source: string };
+  const stats = Object.fromEntries(STAT_FIELDS.map((f) => [f.key, d[f.key] === "" || d[f.key] == null ? null : Number(d[f.key])]));
+  if (Object.values(stats).every((v) => v == null)) return { error: "Enter at least one stat." };
+  if (stats.kills != null && stats.attempts != null && stats.kills > stats.attempts) {
+    return { error: "Kills can't be more than attack attempts. Please check those two numbers." };
+  }
+  const values = { athleteId: athlete.id, season: d.season, level: d.level, position: athlete.position, source: d.source, ...stats, updatedAt: new Date() };
+  await db
+    .insert(schema.athleteSeasons)
+    .values(values)
+    .onConflictDoUpdate({ target: [schema.athleteSeasons.athleteId, schema.athleteSeasons.season, schema.athleteSeasons.level], set: values });
+  revalidatePath("/", "layout");
+  return { ok: true, at: Date.now() };
+}
+
+export async function deleteSeason(form: FormData) {
+  const athlete = await requireAthlete();
+  const id = Number(form.get("id"));
+  if (!Number.isInteger(id)) return;
+  await db.delete(schema.athleteSeasons).where(and(eq(schema.athleteSeasons.id, id), eq(schema.athleteSeasons.athleteId, athlete.id)));
   revalidatePath("/", "layout");
 }

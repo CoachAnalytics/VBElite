@@ -92,6 +92,13 @@
       "when": 1793648511206,
       "tag": "0012_data_included_by_default",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793650508266,
+      "tag": "0013_athlete_stats",
+      "breakpoints": true
     }
   ]
 }
