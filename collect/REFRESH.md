@@ -15,7 +15,7 @@ needs to upload anything.
    schools (least recently researched and weakest first).
 4. **Research.** Run one background agent per batch, at most 3 at a time, with the prompt
    below. When an agent reports back, run
-   `python3 collect/validate_research.py <ids>`. Fix or revert any file with errors
+   `python3 collect/validate_research.py <ids>` and `python3 collect/validate_contacts.py /home/user/vbelite-data <ids>`. Fix or revert any file with errors
    (`git -C /home/user/vbelite-data checkout -- research/<id>.json`). Then save:
    `collect/save_research.sh "Refresh: <school names>"`. Launch the next batch.
 5. **Log.** Append a dated section to `REVIEW.md` in the data repo listing anything
@@ -39,6 +39,11 @@ needs to upload anything.
 > anyone reported decommitted or who is now on a college roster. If you can't confirm
 > something that was there before, keep it, and note that it wasn't re-confirmed.
 > Fill gaps listed in the file's notes where you can. Set researchedAt to today.
+>
+> Also re-check each school's coach contacts in /home/user/vbelite-data/contacts/<ncaaOrgId>.json
+> following /home/user/VBElite/collect/CONTACTS.md (1-2 searches per school): drop staff who
+> have left, add published addresses for new staff, and update checkedAt. Never construct an
+> address from a naming pattern.
 >
 > Keep downloads and helper scripts only in your own folder, <scratchpad>/batchN/.
 >
