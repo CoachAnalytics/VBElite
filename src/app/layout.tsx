@@ -72,6 +72,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-line px-4 py-6 text-center text-xs text-ink-3">
           Data compiled from official athletics sites, NCAA and public commitment trackers. Verify with coaches before deciding.
+          {" · "}
+          <Link href="/privacy" className="underline">Privacy policy</Link>
         </footer>
         {user && <BottomNav />}
         <InstallHint aboveTabBar={!!user} />

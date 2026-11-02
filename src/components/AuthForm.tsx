@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { FormState } from "@/app/actions";
 
@@ -57,6 +58,11 @@ export function AuthForm({ action, submitLabel, passwordAutoComplete }: Props) {
       <button type="submit" disabled={pending} className="btn-primary w-full">
         {pending ? "Please wait…" : submitLabel}
       </button>
+      {isSignup && (
+        <p className="text-center text-xs text-ink-3">
+          By creating an account you agree to our <Link href="/privacy" className="underline">privacy policy</Link>.
+        </p>
+      )}
     </form>
   );
 }

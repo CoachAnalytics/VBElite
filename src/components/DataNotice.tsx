@@ -9,7 +9,8 @@ export function DataNotice({ what = "Measurements" }: { what?: string }) {
     <p className="text-xs text-ink-3">
       {what} you enter here are also included, without her name or contact details, in VB Elite&apos;s anonymous statistics,
       which make age-based comparisons and projections more accurate for every athlete. You can{" "}
-      <Link href="/profile#data" className="underline">opt out on her profile</Link>.
+      <Link href="/profile#data" className="underline">opt out on her profile</Link>. See our{" "}
+      <Link href="/privacy" className="underline">privacy policy</Link>.
     </p>
   );
 }
