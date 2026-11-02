@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { saveQuestionnaire } from "@/app/actions";
 import { formatHeight, parseHeight, REACH_RANGE } from "@/lib/format";
 import { STEPS, type Answers, type Question } from "@/lib/questionnaire";
@@ -46,11 +46,65 @@ function toAnswers(d: Draft, questions: Question[]): { answers?: Record<string, 
   return { answers: out };
 }
 
-export function Questionnaire({ initial }: { initial: Answers | null }) {
+// Answers in progress are kept on this device so leaving the page (or the phone's back
+// gesture) doesn't lose them; cleared when the questionnaire is submitted.
+const draftKey = (athleteId: number) => `vbelite-questionnaire-draft-${athleteId}`;
+
+function readSaved(key: string): { draft: Draft; step: number } | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    const saved = raw ? JSON.parse(raw) : null;
+    return saved && typeof saved.step === "number" && saved.draft ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSaved(key: string, draft: Draft, step: number) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ draft, step }));
+  } catch {
+    // Storage can be unavailable (private mode); the questionnaire still works.
+  }
+}
+
+export function Questionnaire({ initial, athleteId }: { initial: Answers | null; athleteId: number }) {
+  const key = draftKey(athleteId);
   const [state, action, pending] = useActionState(saveQuestionnaire, undefined);
-  const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
+  // Rendered only in the browser (see QuestionnaireLoader), so saved answers can be read here.
+  const [saved] = useState(() => readSaved(key));
+  const [step, setStepState] = useState(() => {
+    if (!saved) return 0;
+    const fromUrl = Number(new URLSearchParams(location.hash.slice(1)).get("step"));
+    return Math.min(STEPS.length - 1, Math.max(0, Number.isInteger(fromUrl) && fromUrl > 0 ? fromUrl - 1 : saved.step));
+  });
+  const [draft, setDraft] = useState<Draft>(() => saved?.draft ?? toDraft(initial));
   const [error, setError] = useState<string | null>(null);
+
+  // Let the browser's back/forward buttons move between steps.
+  useEffect(() => {
+    if (history.state?.questionnaireStep == null) {
+      history.replaceState({ ...history.state, questionnaireStep: step + 1 }, "", `#step=${step + 1}`);
+    }
+    const onPop = (e: PopStateEvent) => {
+      const n = e.state?.questionnaireStep;
+      if (typeof n === "number") {
+        setStepState(Math.min(STEPS.length - 1, Math.max(0, n - 1)));
+        setError(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // Runs once on mount; later steps are pushed by goTo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => writeSaved(key, draft, step), [key, draft, step]);
+
+  const goTo = (n: number) => {
+    setStepState(n);
+    history.pushState({ ...history.state, questionnaireStep: n + 1 }, "", `#step=${n + 1}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const current = STEPS[step];
   const last = step === STEPS.length - 1;
   const set = (id: string, value: string | string[]) => {
@@ -62,13 +116,35 @@ export function Questionnaire({ initial }: { initial: Answers | null }) {
     const check = toAnswers(draft, current.questions);
     if (check.error) return setError(check.error);
     setError(null);
-    setStep((s) => s + 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    goTo(step + 1);
+  };
+  const back = () => {
+    setError(null);
+    // Use the browser's history so its back button and ours stay in step.
+    if (history.state?.questionnaireStep === step + 1 && step > 0) history.back();
+    else goTo(step - 1);
   };
   const all = toAnswers(draft, STEPS.flatMap((s) => s.questions));
 
   return (
-    <form action={action} className="space-y-6">
+    <form
+      action={action}
+      onSubmit={(e) => {
+        // Only the last step submits. Enter in a text box on an earlier step moves to the next step.
+        if (!last) {
+          e.preventDefault();
+          next();
+        } else if (all.error) {
+          e.preventDefault();
+          setError(all.error);
+        } else {
+          try {
+            sessionStorage.removeItem(key);
+          } catch {}
+        }
+      }}
+      className="space-y-6"
+    >
       <div>
         <div className="flex items-baseline justify-between text-sm">
           <span className="font-medium">{current.title}</span>
@@ -146,26 +222,17 @@ export function Questionnaire({ initial }: { initial: Answers | null }) {
       <input type="hidden" name="answers" value={JSON.stringify(all.answers ?? {})} />
       <div className="flex gap-3">
         {step > 0 && (
-          <button type="button" className="btn-secondary" onClick={() => { setError(null); setStep((s) => s - 1); }}>
+          <button key="back" type="button" className="btn-secondary" onClick={back}>
             Back
           </button>
         )}
+        {/* Distinct keys: the tap on "Next" must never land on the submit button that replaces it. */}
         {last ? (
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={pending}
-            onClick={(e) => {
-              if (all.error) {
-                e.preventDefault();
-                setError(all.error);
-              }
-            }}
-          >
+          <button key="submit" type="submit" className="btn-primary" disabled={pending}>
             {pending ? "Finding schools…" : "See my recommended schools"}
           </button>
         ) : (
-          <button type="button" className="btn-primary" onClick={next}>Next</button>
+          <button key="next" type="button" className="btn-primary" onClick={next}>Next</button>
         )}
       </div>
     </form>
