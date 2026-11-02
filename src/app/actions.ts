@@ -156,9 +156,11 @@ export async function saveAthlete(_: FormState, form: FormData): Promise<FormSta
   revalidatePath("/", "layout");
   // New athletes continue to the starting-point questionnaire.
   if (!existing) redirect("/questionnaire");
-  // A new `at` re-mounts the form with the saved values: dropdowns would otherwise snap back to
-  // the values they had when the page loaded, and a second save would write those back.
-  return { ok: true, at: Date.now() };
+  // Re-mount the form (new `at`) filled with exactly what was just saved. Dropdowns would
+  // otherwise snap back to the values they had when the page loaded (and a second save would
+  // write those back), and the refreshed profile can arrive after the re-mount, so we don't
+  // rely on it here.
+  return { ok: true, at: Date.now(), values: submitted };
 }
 
 async function requireAthlete() {
