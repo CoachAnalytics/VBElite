@@ -31,6 +31,16 @@ export default async function ProfilePage() {
           </div>
         </section>
       )}
+      {athlete?.questionnaireAt && (
+        <section className="card space-y-2 p-5">
+          <h2 className="font-medium">Recruiting log</h2>
+          <p className="text-sm text-ink-2">
+            Track emails, coach replies, camp invites, visits and offers. You&apos;ll see where each school stands and get
+            suggestions for similar programs.
+          </p>
+          <Link href="/recruiting" className="btn-primary">Open recruiting log</Link>
+        </section>
+      )}
       {athlete?.questionnaireAt && <CoachConfirmSection athleteId={athlete.id} athleteName={athlete.name} />}
       <p className="text-sm text-ink-3">Signed in as {user.email}</p>
       <ChangePasswordForm />

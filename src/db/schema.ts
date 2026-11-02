@@ -176,6 +176,24 @@ export const savedSchools = pgTable(
   (t) => [primaryKey({ columns: [t.athleteId, t.schoolId] })],
 );
 
+// The athlete's recruiting log: emails sent, coach replies, camp invites, visits, offers.
+// Private to her account; drives the per-school status board and "similar schools".
+export const recruitingEvents = pgTable("recruiting_events", {
+  id: serial("id").primaryKey(),
+  athleteId: integer("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  schoolId: integer("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  // See EVENT_TYPES in src/lib/recruiting.ts
+  type: text("type").notNull(),
+  date: timestamp("date", { withTimezone: true }).notNull(),
+  coachName: text("coach_name"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // A link an athlete sends her club or high school coach to confirm her level. The coach
 // answers without an account; the response refines the questionnaire's estimate.
 export const coachConfirmations = pgTable("coach_confirmations", {

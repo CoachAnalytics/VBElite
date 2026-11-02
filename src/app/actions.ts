@@ -10,6 +10,7 @@ import { createSession, destroySession, requireUser } from "@/lib/auth";
 import { parseHeight } from "@/lib/format";
 import { answersSchema, STEPS } from "@/lib/questionnaire";
 import { COACH_ROLES, responseSchema } from "@/lib/coach";
+import { eventSchema } from "@/lib/recruiting";
 import { createCoachLink, saveCoachResponse } from "@/lib/coachLinks";
 import { lookupZip } from "@/lib/geo";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -256,4 +257,43 @@ export async function submitCoachResponse(_: CoachResponseState, form: FormData)
   const ok = await saveCoachResponse(token, parsed.data);
   if (!ok) return { error: "This link has already been answered or has expired. Ask the athlete to send a new one." };
   return { done: true };
+}
+
+export type EventFormState = { error?: string; ok?: boolean; at?: number } | undefined;
+
+/** Adds a recruiting log entry and puts the school on her list if it isn't there yet. */
+export async function addRecruitingEvent(_: EventFormState, form: FormData): Promise<EventFormState> {
+  const athlete = await requireAthlete();
+  const parsed = eventSchema.safeParse({
+    schoolId: form.get("schoolId"),
+    type: form.get("type"),
+    date: form.get("date"),
+    coachName: form.get("coachName") ?? "",
+    note: form.get("note") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+  const [school] = await db.select({ id: schema.schools.id }).from(schema.schools).where(eq(schema.schools.id, d.schoolId));
+  if (!school) return { error: "Choose a school from the list" };
+  await db.insert(schema.recruitingEvents).values({
+    athleteId: athlete.id,
+    schoolId: d.schoolId,
+    type: d.type,
+    date: d.date,
+    coachName: d.coachName || null,
+    note: d.note || null,
+  });
+  await db.insert(schema.savedSchools).values({ athleteId: athlete.id, schoolId: d.schoolId }).onConflictDoNothing();
+  revalidatePath("/", "layout");
+  return { ok: true, at: Date.now() };
+}
+
+export async function deleteRecruitingEvent(form: FormData) {
+  const athlete = await requireAthlete();
+  const id = Number(form.get("id"));
+  if (!Number.isInteger(id)) return;
+  await db
+    .delete(schema.recruitingEvents)
+    .where(and(eq(schema.recruitingEvents.id, id), eq(schema.recruitingEvents.athleteId, athlete.id)));
+  revalidatePath("/", "layout");
 }

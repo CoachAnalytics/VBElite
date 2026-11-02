@@ -4,7 +4,8 @@ import { formatHeight } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
 import { parseAnswers } from "@/lib/questionnaire";
 import { estimateLevel, heightBenchmarks, levelPhrase, programLevels, recommend, type Tier } from "@/lib/recommend";
-import { getRecommendationData, getSavedSchools, requireOnboarded } from "@/lib/queries";
+import { getRecommendationData, getRecruitingEvents, getSavedSchools, requireOnboarded } from "@/lib/queries";
+import { interestLevel, schoolStatuses } from "@/lib/recruiting";
 import { latestConfirmation } from "@/lib/coachLinks";
 import { CoachConfirmSection } from "@/components/CoachConfirmSection";
 
@@ -17,10 +18,11 @@ const TIER_INFO: Record<Tier, { title: string; blurb: string }> = {
 export default async function RecommendationsPage() {
   const { athlete } = await requireOnboarded();
   const answers = parseAnswers(athlete.questionnaire);
-  const [{ schools, players }, saved, confirmation] = await Promise.all([
+  const [{ schools, players }, saved, confirmation, events] = await Promise.all([
     getRecommendationData(athlete.position, athlete.gradYear),
     getSavedSchools(athlete.id),
     latestConfirmation(athlete.id),
+    getRecruitingEvents(athlete.id),
   ]);
   const savedIds = new Set(saved.map((s) => s.schoolId));
   const levels = programLevels(schools);
@@ -32,7 +34,11 @@ export default async function RecommendationsPage() {
     latitude: athlete.latitude,
     longitude: athlete.longitude,
   };
-  const estimate = answers ? estimateLevel(answers, basics, benchmarks, confirmation) : null;
+  const strongest = interestLevel(schoolStatuses(events), levels);
+  const interest = strongest
+    ? { ...strongest, schoolName: schools.find((x) => x.id === strongest.schoolId)?.name ?? "a school" }
+    : null;
+  const estimate = answers ? estimateLevel(answers, basics, benchmarks, confirmation, interest) : null;
   const picks = answers && estimate ? recommend(schools, levels, estimate, answers, basics) : [];
   const first = athlete.name.split(" ")[0];
   const notSaved = picks.filter((p) => !savedIds.has(p.school.id));

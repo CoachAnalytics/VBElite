@@ -165,6 +165,8 @@ export function estimateLevel(
   athlete: AthleteBasics,
   benchmarks: HeightBenchmarks,
   confirmation: CoachConfirmation | null = null,
+  /** Her strongest real recruiting interest: an offer or official visit (see interestLevel). */
+  interest: { level: number; schoolName: string; type: string } | null = null,
 ): LevelEstimate {
   const coach = confirmation ? COACH[confirmation.level] : COACH[a.coachProjection];
   const role = ROLE[confirmation?.role ?? a.clubRole];
@@ -179,6 +181,8 @@ export function estimateLevel(
     ...(coach != null ? ([[coach, coachWeight]] as [number, number][]) : []),
     [club, coach != null ? 0.35 : 0.65],
     ...(height != null ? ([[height, heightWeight]] as [number, number][]) : []),
+    // A real offer (or official visit) is the strongest evidence there is.
+    ...(interest ? ([[interest.level, interest.type === "official" ? 0.3 : 0.5]] as [number, number][]) : []),
   ];
   const weight = parts.reduce((n, [, w]) => n + w, 0);
   const level = clamp(parts.reduce((n, [v, w]) => n + v * w, 0) / weight);
@@ -194,6 +198,11 @@ export function estimateLevel(
     drivers.push(`Her coach projects her at ${levelPhrase(coach)} (not yet confirmed by the coach).`);
   } else {
     drivers.push("No coach projection yet, so the range is wider. Send her coach a confirmation link below.");
+  }
+  if (interest) {
+    drivers.push(
+      `${interest.type === "official" ? "An official visit to" : "An offer from"} ${interest.schoolName} (${levelPhrase(interest.level)}) counts as strong evidence of her level.`,
+    );
   }
   drivers.push(`Her club level and playing role point to ${levelPhrase(club)}.`);
   if (height != null) {

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { redirect } from "next/navigation";
 import { programSummary, type AthleteInput, type SchoolBundle } from "./analytics";
@@ -168,4 +168,28 @@ export async function requireOnboarded() {
   if (!athlete) redirect("/profile");
   if (!athlete.questionnaireAt) redirect("/questionnaire");
   return { user, athlete };
+}
+
+/** The athlete's recruiting log with school names, newest first. */
+export async function getRecruitingEvents(athleteId: number) {
+  return db
+    .select({
+      id: schema.recruitingEvents.id,
+      schoolId: schema.recruitingEvents.schoolId,
+      type: schema.recruitingEvents.type,
+      date: schema.recruitingEvents.date,
+      coachName: schema.recruitingEvents.coachName,
+      note: schema.recruitingEvents.note,
+      schoolName: schema.schools.name,
+      schoolSlug: schema.schools.slug,
+    })
+    .from(schema.recruitingEvents)
+    .innerJoin(schema.schools, eq(schema.schools.id, schema.recruitingEvents.schoolId))
+    .where(eq(schema.recruitingEvents.athleteId, athleteId))
+    .orderBy(desc(schema.recruitingEvents.date), desc(schema.recruitingEvents.id));
+}
+
+/** Every school's id and name, for the log's school picker. */
+export async function schoolNames() {
+  return db.select({ id: schema.schools.id, name: schema.schools.name }).from(schema.schools).orderBy(asc(schema.schools.name));
 }

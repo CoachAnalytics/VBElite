@@ -4,7 +4,8 @@ import { toggleSchool } from "../../actions";
 import { analyzeSchool, pipelineClasses, positionTimeline, programSummary, recruitingPipeline, rosterBreakdown } from "@/lib/analytics";
 import { formatHeight, formatMoney, formatPct } from "@/lib/format";
 import { positionLabel } from "@/lib/positions";
-import { athleteInput, getSavedSchools, getSchoolBundleBySlug, requireOnboarded } from "@/lib/queries";
+import { athleteInput, getRecruitingEvents, getSavedSchools, getSchoolBundleBySlug, requireOnboarded } from "@/lib/queries";
+import { eventInfo } from "@/lib/recruiting";
 import { PositionTimelineChart, WinPctChart } from "@/components/SchoolCharts";
 import { PipelineTable, RosterBreakdownTable } from "@/components/BreakdownTables";
 
@@ -30,6 +31,7 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
   const a = input ? analyzeSchool(bundle, input) : null;
   const program = programSummary(bundle.seasons);
   const saved = athlete ? (await getSavedSchools(athlete.id)).some((s) => s.schoolId === school.id) : false;
+  const myEvents = athlete ? (await getRecruitingEvents(athlete.id)).filter((e) => e.schoolId === school.id) : [];
   const pos = athlete?.position;
   // Only http(s) links from the research sources are shown.
   const sources: string[] = (() => {
@@ -79,6 +81,22 @@ export default async function SchoolPage({ params }: PageProps<"/schools/[slug]"
           </form>
         )}
       </div>
+
+      {athlete && (
+        <section className="card flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+          <div>
+            <span className="font-medium">Your recruiting with {school.name}: </span>
+            {myEvents.length ? (
+              <span className="text-ink-2">
+                {myEvents.slice(0, 3).map((e) => `${eventInfo(e.type).short} (${e.date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})`).join(" · ")}
+              </span>
+            ) : (
+              <span className="text-ink-3">nothing logged yet</span>
+            )}
+          </div>
+          <Link href="/recruiting" className="text-accent-ink underline">{myEvents.length ? "Open log" : "Log an update"}</Link>
+        </section>
+      )}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Stat

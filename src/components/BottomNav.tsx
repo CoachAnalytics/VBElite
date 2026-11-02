@@ -25,6 +25,16 @@ const TABS = [
     ),
   },
   {
+    href: "/recruiting",
+    label: "Recruiting",
+    icon: (
+      <>
+        <path d="M4 4h16v16H4z" />
+        <path d="M8 9h8M8 13h8M8 17h5" />
+      </>
+    ),
+  },
+  {
     href: "/profile",
     label: "Profile",
     icon: (
